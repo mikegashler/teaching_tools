@@ -1,0 +1,39 @@
+
+[
+	{
+		"name":"Project 1 - Hello Java",
+		"rules":[
+			{
+				"type":"find",					Gives the student 30 points if
+				"name":"secretanswer",			the string "secretanswer" is found
+				"points":30						in the output.
+			},
+			{
+				"type":"finderr",				Deduct 30 points if
+				"name":"error:",					the string "error:" is found
+				"points":-30						in stderr.
+			},
+			{
+				"type":"value",					Gives the student 20 points if the 
+				"name":"answer1=",				numerical value immediately
+				"min":"3.141",					following "answer1="
+				"max":"3.142",					is >= 3.141 and <= 3.142.
+				"points":20
+			},
+			{
+				"type":"add",					Gives the student 10 points for submitting something.
+				"points":10
+			}
+		]
+	},
+	{
+		"name":"Project 2 - Boggle",
+		"rules":[
+			{
+				"type":"noscore",			Prints a message, and prevents a score from being reported.
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	}
+]
+

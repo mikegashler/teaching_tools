@@ -1,0 +1,132 @@
+[
+	{
+		"name":"Project 1 - Utility Theory",
+		"rules":[
+			{
+				"type":"passfail"
+			},
+			{
+				"type":"add",
+				"points":100
+			},
+			{
+				"type":"find",
+				"name":".exe",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".suo",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".sdf",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".ipch",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".pdb",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".ncb",
+				"points":-100
+			}
+		]
+	},
+	{
+		"name":"Project 2 - Breadth first search",
+		"rules":[
+			{
+				"type":"passfail"
+			},
+			{
+				"type":"add",
+				"points":100
+			},
+			{
+				"type":"find",
+				"name":".exe",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".suo",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".sdf",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".ipch",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".pdb",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":".ncb",
+				"points":-100
+			}
+		]
+	},
+	{
+		"name":"Project 3 - Puzzle",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 4 - Genetic algorithm",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 5 - Torch The Flag",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 6 - Random Forest",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 7 - General Intelligence",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	}
+]
+

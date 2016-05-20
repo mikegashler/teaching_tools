@@ -1,0 +1,96 @@
+[
+	{
+		"name":"Project 1 - Hello Java",
+		"rules":[
+			{
+				"type":"find",
+				"name":"Model.java",
+				"points":100
+			},
+			{
+				"type":"find",
+				"name":"No build script was found",
+				"points":-100
+			},
+			{
+				"type":"find",
+				"name":"Model.class",
+				"points":-100
+			},
+			{
+				"type":"finderr",
+				"name":"error:",
+				"points":-100
+			},
+			{
+				"type":"finderr",
+				"name":"javac:",
+				"points":-100
+			}
+		]
+	},
+	{
+		"name":"Project 2 - Objects",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 3 - Polymorphism",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 4 - AI",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 5 - GUI",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 6 - Web server",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 7 - AJAX",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	},
+	{
+		"name":"Project 8 - PHP",
+		"rules":[
+			{
+				"type":"noscore",
+				"message":"Thanks! The grader will check your submission manually."
+			}
+		]
+	}
+]
+
