@@ -860,41 +860,6 @@ public:
 		}
 	}
 
-	void quantify(map<string, CodeNode*>& chunks, size_t thresh, size_t& match, size_t& total)
-	{
-		if(size() < thresh)
-		{
-			std::stringstream ss;
-			stringify(ss);
-			string s = ss.str();
-//cout << s << "\n";
-			map<string, CodeNode*>::iterator it = chunks.find(s);
-			if(it != chunks.end())
-			{
-				match++;
-			}
-			total++;
-		}
-		else
-		{
-			for(CodeNode* pChild = m_firstChild; pChild; pChild = pChild->m_nextSibling)
-				pChild->quantify(chunks, thresh, match, total);
-		}
-	}
-
-	double portion_in(CodeNode* pHaystack)
-	{
-		map<string, CodeNode*> chunks;
-		size_t thresh = 40;
-//cout << "----------------------b\n";
-		pHaystack->chunkify(chunks, thresh);
-		size_t match = 0;
-		size_t total = 0;
-//cout << "----------------------a\n";
-		quantify(chunks, thresh, match, total);
-		return((double)match / total);
-	}
-
 	size_t align_cost(CodeNode* pSrc, size_t max_cost, size_t depth)
 	{
 		// Don't waste time comparing nodes of totally different size
@@ -975,6 +940,7 @@ public:
 	string name;
 	string alphaname;
 	CodeNode* pCodeNode;
+	map<string, CodeNode*> chunks;
 
 	Submission(string n)
 	{
@@ -985,38 +951,18 @@ public:
 			if((n[i] >= 'a' && n[i] <= 'z') || (n[i] >= 'A' && n[i] <= 'Z'))
 				alphaname += n[i];
 		}
+
+		pCodeNode = processFolderRecursively(n.c_str());
+		if(pCodeNode)
+		{
+			size_t thresh = 40;
+			pCodeNode->chunkify(chunks, thresh);
+		}
 	}
 
 	~Submission()
 	{
 		delete(pCodeNode);
-	}
-
-	double compare(Submission& that)
-	{
-		return pCodeNode->portion_in(that.pCodeNode);
-	}
-};
-
-
-
-
-
-class CheatFinder
-{
-protected:
-	map<string,size_t> m_dupes;
-	vector<Submission*> m_submissions;
-
-public:
-	CheatFinder()
-	{
-	}
-
-	~CheatFinder()
-	{
-		for(size_t i = 0; i < m_submissions.size(); i++)
-			delete(m_submissions[i]);
 	}
 
 	static CodeNode* processFolderRecursively(const char* szFoldername)
@@ -1051,15 +997,49 @@ public:
 		return pNode;
 	}
 
+	double compare(Submission& that)
+	{
+		size_t matches = 0;
+		for(map<string, CodeNode*>::iterator it = chunks.begin(); it != chunks.end(); it++)
+		{
+			map<string, CodeNode*>::iterator it2 = that.chunks.find(it->first);
+			if(it2 != that.chunks.end())
+				matches++;
+		}
+		return((double)matches / chunks.size());
+	}
+};
+
+
+
+
+
+class CheatFinder
+{
+protected:
+	map<string,size_t> m_dupes;
+	vector<Submission*> m_submissions;
+
+public:
+	CheatFinder()
+	{
+	}
+
+	~CheatFinder()
+	{
+		for(size_t i = 0; i < m_submissions.size(); i++)
+			delete(m_submissions[i]);
+	}
+
 	void parse(GArgReader& args)
 	{
-		CodeNode* a = processFolderRecursively(args.pop_string());
+		CodeNode* a = Submission::processFolderRecursively(args.pop_string());
 		a->print(0, false);
 	}
 
 	void normalize(GArgReader& args)
 	{
-		CodeNode* a = processFolderRecursively(args.pop_string());
+		CodeNode* a = Submission::processFolderRecursively(args.pop_string());
 		a->print(0, true);
 	}
 
@@ -1067,11 +1047,9 @@ public:
 	{
 		string folderA = args.pop_string();
 		string folderB = args.pop_string();
-		CodeNode* a = processFolderRecursively(folderA.c_str());
-		unique_ptr<CodeNode> hA(a);
-		CodeNode* b = processFolderRecursively(folderB.c_str());
-		unique_ptr<CodeNode> hB(b);
-		double d = a->portion_in(b);
+		Submission a(folderA);
+		Submission b(folderB);
+		double d = a.compare(b);
 		cout << to_str(d * 100.0) << "% within\n";
 	}
 
@@ -1093,7 +1071,6 @@ public:
 		for(size_t i = 0; i < folders.size(); i++)
 		{
 			Submission* pS = new Submission(folders[i]);
-			pS->pCodeNode = processFolderRecursively(folders[i].c_str());
 			if(pS->pCodeNode)
 			{
 				//cout << "	" << folders[i] << "\n";
@@ -1170,9 +1147,8 @@ void doit(GArgReader& args)
 		cout << "        and report those that are most similar.\n";
 		cout << "\n";
 		cout << "      compare [folder1] [folder2]\n";
-		cout << "        Compute the number of token adjustments necessary to\n";
-		cout << "        convert all the code in [folder1] to the code in\n";
-		cout << "        [folder2]. (Renamed tokens and whitespace adjustments\n";
+		cout << "        Compute the portion of [folder1] contained in [folder2].\n";
+		cout << "        (Renamed tokens and whitespace adjustments\n";
 		cout << "        are ignored.)\n";
 		cout << "\n";
 		cout << "      parse [folder]\n";
