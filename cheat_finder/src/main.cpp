@@ -1017,7 +1017,6 @@ public:
 class CheatFinder
 {
 protected:
-	map<string,size_t> m_dupes;
 	vector<Submission*> m_submissions;
 
 public:
@@ -1053,31 +1052,19 @@ public:
 		cout << to_str(d * 100.0) << "% within\n";
 	}
 
-	void find_worst_offenders(GArgReader& args)
+	void parse_all_submissions(vector<string>& folders)
 	{
-		// Check parameters
-		if(chdir(args.pop_string()) != 0)
-			throw Ex("Failed to chdir");
-		vector<string> folders;
-		GFile::folderList(folders, ".");
-		if(folders.size() < 2)
-		{
-			cout << "Expected two or more folders in the current directory.\n";
-			return;
-		}
-
-		// Parse all the code
-		cout << "Parsing...\n";
+		map<string,size_t> dupes;
 		for(size_t i = 0; i < folders.size(); i++)
 		{
 			Submission* pS = new Submission(folders[i]);
 			if(pS->pCodeNode)
 			{
 				//cout << "	" << folders[i] << "\n";
-				map<string,size_t>::iterator it = m_dupes.find(pS->alphaname);
-				if(it == m_dupes.end())
+				map<string,size_t>::iterator it = dupes.find(pS->alphaname);
+				if(it == dupes.end())
 				{
-					m_dupes[pS->alphaname] = m_submissions.size();
+					dupes[pS->alphaname] = m_submissions.size();
 					m_submissions.push_back(pS);
 				}
 				else
@@ -1093,6 +1080,78 @@ public:
 				delete(pS);
 			}
 		}
+	}
+
+	void drop_common_chunks()
+	{
+		// Count all the chunks
+		map<string,size_t> chunk_counts;
+		for(size_t i = 0; i < m_submissions.size(); i++)
+		{
+			Submission* pSub = m_submissions[i];
+			for(auto it = pSub->chunks.begin(); it != pSub->chunks.end(); it++)
+			{
+				auto it2 = chunk_counts.find(it->first);
+				if(it2 == chunk_counts.end())
+					chunk_counts.insert(std::pair<string,size_t>(it->first,1));
+				else
+					it2->second++;
+			}
+		}
+
+		// Drop the infrequent chunks from chunk_counts
+		size_t thresh = m_submissions.size() / 2;
+		auto it = chunk_counts.begin();
+		while(it != chunk_counts.end())
+		{
+			if(it->second < thresh)
+			{
+				auto condemned = it;
+				it++;
+				chunk_counts.erase(condemned);
+			}
+			else
+				it++;
+		}
+
+		// Drop the frequent chunks from all of the submissions
+		for(size_t i = 0; i < m_submissions.size(); i++)
+		{
+			Submission* pSub = m_submissions[i];
+			auto it1 = pSub->chunks.begin();
+			while(it1 != pSub->chunks.end())
+			{
+				const string& s = it1->first;
+				auto it2 = chunk_counts.find(s);
+				if(it2 == chunk_counts.end())
+					it1++;
+				else
+				{
+					auto condemned = it1;
+					it1++;
+					pSub->chunks.erase(condemned);
+				}
+			}
+		}
+	}
+
+	void find_worst_offenders(GArgReader& args)
+	{
+		// Check parameters
+		if(chdir(args.pop_string()) != 0)
+			throw Ex("Failed to chdir");
+		vector<string> folders;
+		GFile::folderList(folders, ".");
+		if(folders.size() < 2)
+		{
+			cout << "Expected two or more folders in the current directory.\n";
+			return;
+		}
+
+		// Parse all the code
+		cout << "Parsing...\n";
+		parse_all_submissions(folders);
+		drop_common_chunks();
 
 		// Compare the data
 		cout << "Comparing...\n";
