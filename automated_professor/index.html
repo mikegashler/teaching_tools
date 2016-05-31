@@ -1,0 +1,869 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<title>Automated Professor</title>
+<!-- *********** The style of the page *********** -->
+	<style>
+		body {
+			background-image:url('white_fade.png');
+			background-color:#908050;
+			background-repeat:repeat-x;
+		}
+		a {
+			color: #000060;
+			text-decoration: none;
+		}
+		a:hover {
+			text-decoration: underline;
+		}
+		.next {
+			color: #000060;
+			font-size:150%;
+			margin-top: 5mm;
+			cursor: pointer;
+		}
+		.next:hover {
+			text-decoration: underline;
+		}
+		#outer_table{
+			width: 700px;
+			padding: 50px;
+			border: solid black;
+			border-style: double;
+			background-color: #f0f0f0;
+			margin: 0 auto;
+		}
+		#top_row{
+			width: 700px;
+			display:table;
+			table-layout: fixed;
+			text-align: left;
+		}
+		.inner_table{
+			display:table-cell;
+			padding: 20px;
+			vertical-align: middle;
+			font-size:150%;
+			margin:auto;
+		}
+		#bottom_cell{
+			width: 700px;
+		}
+	</style>
+</head>
+
+<!-- *********** The body of the page *********** -->
+<body>
+<br><br><br>
+<div id="outer_table">
+	<div id="top_row">
+		<div class="inner_table" id="prof_words" >
+		<!--Professor's words-->
+		</div>
+		<div class="inner_table" style="width:100px;" id="prof_picture">
+		<!--Professor's picture-->
+		</div>
+	</div>
+	<div id="bottom_cell">
+	<!--Choices-->
+	<ul id="the_nexts">
+	</ul>
+</div>
+</div>
+<!--<form onsubmit="show_state(document.getElementById('jumper').value, null); return false;">Jump to page:<input id="jumper" type="text"></input></form>-->
+<div id="page_name"></div>
+
+<script type="application/x-javascript">
+// A stack for remembering where we have been, for "back" purposes
+var statelist = new Array();
+
+function make_admin_page() {
+	var out = "List of detected errors:<br>";
+	var img_counts = {};
+	for (var pagename in professor) {
+		var page = professor[pagename];
+		if(page.advice === undefined)
+			out += "&nbsp;&nbsp;Page " + pagename + " is missing advice<br>\n";
+		if(page.img === undefined)
+			out += "&nbsp;&nbsp;Page " + pagename + " is missing img<br>\n";
+		if(img_counts[page.img] === undefined)
+			img_counts[page.img] = 1;
+		else
+			img_counts[page.img]++;
+		if(page.choices === undefined)
+			out += "&nbsp;&nbsp;Page " + pagename + " is missing choices<br>\n";
+		var choices = page.choices;
+		for(var i = 0; i < choices.length; i++) {
+			var dest = choices[i]["dest"];
+			if(dest === undefined)
+				out += "&nbsp;&nbsp;Page " + pagename + ", choice " + (i + 1).toString() + " is missing dest<br>\n";
+			var destPage = professor[dest];
+			if(destPage === undefined) {
+				if(dest != "null")
+					out += "&nbsp;&nbsp;Page " + pagename + ", choice " + (i + 1).toString() + " is a broken link<br>\n";
+			}
+			else {
+				if(destPage.img === undefined)
+					out += "&nbsp;&nbsp;Page " + pagename + ", choice " + (i + 1).toString() + " has no image<br>\n";
+				else {
+					if(destPage.img != "null" && page.img == destPage.img) {
+						out += "&nbsp;&nbsp;Page " + pagename + " has same image as choice " + (i + 1).toString() + "<br>\n";
+					}
+				}
+			}
+		}
+	}
+	out += "<br>Distribution of image usage:<br>";
+	for (var property in img_counts) {
+		out += "&nbsp;&nbsp;" + property + ":" + img_counts[property].toString() + "<br>\n";
+	}
+	prof_words.innerHTML = out;
+}
+
+function show_state(state, old_state) {
+	if (state == null || state == "null") return;
+	if (old_state != null) statelist.unshift(old_state);
+
+	// Special page for the admin
+	if (state == "admin") {
+		make_admin_page();
+		return;
+	}
+
+	// Special page for non-existing pages
+	if (typeof(professor[state]) == "undefined") {
+		prof_words.innerHTML = "Sorry, this page has not been written yet. The automated professor is still a work-in-progress. In other words, 404.";
+		prof_picture.innerHTML = "<img src=\"prof_hmm.svg\">";
+		var for_nexts = "<li class=\"next\" onclick=\"show_state('start',null);\">Start Over.</li>";
+		// Add a "go back" option
+		if (statelist.length > 0) {
+			for_nexts = for_nexts + "<li class=\"next\" onclick=\"statelist.shift();show_state('"+statelist[0]+"',null);\">What? Could you back up, please?</li>";	
+		}
+		the_nexts.innerHTML = for_nexts;
+		page_name.innerHTML = "This page doesn't exist yet. =\\ ";
+		return;
+	}
+
+	// Normal page
+	//page_name.innerHTML = "This page's name is <b>" + state + "</b>.";
+	//If we have found this state in the json, fill in the DHTML
+	prof_words.innerHTML = professor[state]["advice"];
+	prof_picture.innerHTML = "<img src=\"prof_" + professor[state]["img"] + ".svg\">";
+	var for_nexts = "";
+	var nexts = professor[state]["choices"];
+	for(var i = 0; i < nexts.length; i++) {
+		for_nexts = for_nexts + "<li class=\"next\" onclick=\"show_state('"+nexts[i]["dest"]+"', '"+state+"');\">"+nexts[i]["text"]+"</li>";
+	}
+	// Add a "go back" option
+	if (statelist.length > 0) {
+		for_nexts = for_nexts + "<li class=\"next\" onclick=\"statelist.shift();show_state('"+statelist[0]+"',null);\">Wait! Could you back up, please?</li>";	
+		for_nexts = for_nexts + "<li class=\"next\"><a href=\"mailto:yourprofessor@yourschool.edu?Subject=[autoprof]%20suggested%20option%20for%20page:%20" + state + "\">This page is missing an important option.</a></li>";
+	}		
+	the_nexts.innerHTML = for_nexts;
+}
+
+/************* The content **********/
+var professor = {
+	"start" : {"advice":"Hello, I am an automated computer science professor. How can I help you?",
+		"img":"hi",
+		"choices": [
+			{"dest":"see_a_human", "text":"I don't understand the assignment." },
+			{"dest":"define_crashing", "text":"My program is crashing." },
+			{"dest":"do_you_know_what_you_want", "text":"I need help finding a bug." },
+			{"dest":"try_search_engine", "text":"I want to know how to write code to accomplish a specific task." },
+			{"dest":"about", "text":"What is this?" }
+		]
+	},
+	"see_a_human" : {"advice":"It sounds like you need the assistance of a human.",
+		"img":"hmm",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"define_crashing" : {"advice":"Could you please define what you mean by \"crashing\"?",
+		"img":"ug",
+		"choices": [
+			{"dest":"compiler_error" , "text":"When I build, it says \"Error\" and gives me a line number and some snips of code."},
+			{"dest":"do_you_have_call_stack" , "text":"It says something about \"unhandled exception\" or \"NullPointerException\" or \"IllegalArgumentException\" or something about an exception."},
+			{"dest":"use_debugger", "text":"I'm getting a segmentation fault, memory access violation, or general protection fault."},
+			{"dest":"assertion", "text":"It says \"assertion failed\" or \"runtime check failed\"."},
+			{"dest":"valgrind", "text":"I get a message about \"double free\" or \"memory corruption\"."},
+			{"dest":"oom", "text":"Invalid memory allocation, out of memory, OOM, or system running low on resources."},
+			{"dest":"pipe_to_file", "text":"Crazy amounts of cryptic text scroll by at an alarming rate."},
+			{"dest":"file_not_found", "text":"It says \"File not found\", or \"Cannot open file for reading/writing\"."},
+			{"dest":"what_does_it_say", "text":"I just get an error message."},
+			{"dest":"cool", "text":"I'm getting a blue screen of death, a kernel panic, or a picture of a sick computer."},
+			{"dest":"cool", "text":"Horrible grinding sounds, followed by BOOM! Sparks! Smoke! Fire!"}
+		]
+	},
+	"about" : {"advice":"Computer scientists are inherently lazy.<br>"+
+		"They are sooo lazy, in fact, that instead of just solving a problem,"+
+		" they will spend many times longer trying to automate their solution,"+
+		" hoping to save a little effort in the long run. (<a href=\"https://xkcd.com/974\">relevant xkcd</a>)<br>"+
+		"So, when a computer scientist becomes a professor, this is what happens.",
+		"img":"eh",
+		"choices": [
+			{"dest":"static_pages", "text":"Are you a real artificial intelligence?"},
+			{"dest":"license", "text":"May I fork the automated professor?"},
+			{"dest":"null", "text":"<a href=\"flow_chart.svg\">Do you have a flow chart version that I can post on my door?</a>"},
+			{"dest":"incentive_to_be_independent", "text":"Do you have to make faces at me while I ask for help? It reminds me of Clippy ...*shudder*."},
+			{"dest":"chirp", "text":"Are you wearing shorts under there?"},
+			{"dest":"admin", "text":"I am the real professor. Take me to the admin page."}
+		]
+	},
+	"add_a_counter" : {"advice":"The following steps should nail it down:"+
+		"<ol>"+
+		"<li>Add a counter to your loop, so you can find out exactly when the problem occurs.</li>"+
+		"<li>Run your program again to find out which iteration causes the problem.</li>"+
+		"<li>Run your program yet again, just to confirm that the problem is deterministic.</li>"+
+		"<li>Add a little temporary code to catch the bug when the problematic iteration occurs. Example:</li>"+
+		"<pre>"+
+			"if(iter == 143731)\n"+
+			"{\n"+
+			   "\tprint(somevalue);\n"+
+			"}\n"+
+		   "</pre>"+
+		"(If you are using a debugger, you can put a breakpoint on that print statement.)"+
+		"<li>Then, run the code again to see what your temporary code does.</li>"+
+		"</ol>",
+		"img":"ug",
+		"choices": [
+			{"dest":"check_values", "text":"Okay, got it."},
+			{"dest":"make_it_deterministic", "text":"The problem is not deterministic. It occurs in a different iteration each time I run it!"}
+		]
+	},
+	"already_diverged" : {"advice":"Then your program must have already deviated from expected behavior before this point.",
+		"img":"aha",
+		"choices": [
+			{"dest":"first_differs", "text":"Um, ok. So what should I do, then?"},
+			{"dest":"have_a_nice_day", "text":"No, I see the bug!"}
+		]
+	},
+	"big_guns" : {"advice":"It sounds like it's time to bring out the big guns!"+
+		" First, you are going to have to experimentally remove major features from your code to help narrow the scope."+
+		" Next, you are going to have to write code to produce graphical visualizations of the state."+
+		" Then, using the insights you have extracted from from those visualizations,"+
+		" you will need to design a whole suite of automated tests to determine whether a single state is valid or not."+
+		" You will execute your test suite at regular intervals throughout your program until the problem is isolated."+
+		" It isn't going to be easy, but I am confident that you can beat this with sheer determination and dogged persistence!",
+		"img":"yeah",
+		"choices": [
+			{"dest":"start", "text":"I think I just figured out what I need to do, but thanks anyway."},
+		]
+	},
+	"binary_search" : {"advice":"First, check whether it was initialized correctly."+
+		" Then, use binary search."+
+		" That is, pick a point about half-way between where it was known to have a valid value"+
+		" and where it was known have an invalid value."+
+		" Test it at the half-way point, then repeat until you find the exact spot where it first takes an incorrect value.",
+		"img":"yadda",
+		"choices": [
+			{"dest":"when_did_first_take_incorrect_value", "text":"Yeah, I knew that."},
+		]
+	},
+	"change_major" : {"advice":"There are many noble professions that do not require a degree in computer science.",
+		"img":"arg",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"check_values" : {"advice":"Can you identify a variable that has an incorrect value at that point?",
+		"img":"hi",
+		"choices": [
+			{"dest":"already_diverged", "text":"Yes."},
+			{"dest":"you_must_check", "text":"The code in this area looks perfect, so I am certain the variable values are right too."},
+			{"dest":"how_to_view_variables", "text":"How do I determine the values at that point?"},
+			{"dest":"how_know_broken", "text":"I have examined the values, and they are all correct. And, the code here looks right too."},
+		]
+	},
+	"chirp" : {"advice":"...?",
+		"img":"chirp",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"code_not_problem" : {"advice":"Then, your code is not the problem."+
+		" Check how your system is set up, and how you launched the application."+
+		" Try running it on a different machine.",
+		"img":"huh",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"compiler_error" : {"advice":"You have encountered a compiler error."+
+		" (If there are many errors, only look at the first one."+
+		" Sometimes, one error can cause many others, so only the first error message is guaranteed to be reliable.)"+
+		" The following steps will fix most compiler errors:"+
+		"<ol>"+
+		"	<li>Carefully reread the error message.</li>"+
+		"	<li>Look at the code that caused the error.</li>"+
+		"	<li>Think about it.</li>"+
+		"	<li>Ask your favorite search engine how to fix such problems.</li>"+
+		"	<li>If you don't know what to do, yet, go to step 1.</li>"+
+		"</ol>"+
+		"After you fix the first error, save and recompile.",
+		"img":"yadda",
+		"choices": [
+			{"dest":"see_a_human", "text":"These steps are not working for me."},
+		]
+	},
+	"computers_are_not_magical" : {"advice":"Computers are not magical wish-granting devices."+
+		" They are instruction-following machines."+
+		" Start by putting together some instructions that you think"+
+		" might work, then we'll go from there.",
+		"img":"ug",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"cool" : {"advice":"Cool! Can you send me repro instructions?",
+		"img":"gasp",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"determine_what_you_want" : {"advice":"Come back when you know what you want.",
+		"img":"grr",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"do_you_have_call_stack" : {"advice":"An exception occurs when something unexpected happens while code is executing."+
+		" Exceptions are the second-easiest kind of bug to find (after compile errors),"+
+		" so it is generally considered to be good practice to write code to throw"+
+		" an exception whenever anything unexpected occurs."+
+		" So, apparently, some well-written code is now telling you about a bug."+
+		" The first thing to do is read what it says."+
+		" Then, examine the call stack (a.k.a. backtrace),"+
+		" and compare it with your code to find the problem.",
+		"img":"aha",
+		"choices": [
+			{"dest":"what_is_call_stack", "text":"What is a call stack?"},
+			{"dest":"how_to_obtain_call_stack", "text":"Where do I get the call stack?"},
+			{"dest":"use_call_stack", "text":"How do I use the call stack?"},
+		]
+	},
+	"what_is_call_stack" : {"advice":"A list of function calls leading up to the current position in your code."+
+		" The bottom of the stack usually begins with \"main\", or some point where the current thread was spawned,"+
+		" and the top of the stack contains the function where execution was stopped."+
+		" For convenience, the call stack is often printed with an exception message.",
+		"img":"yadda",
+		"choices": [
+			{"dest":"how_to_obtain_call_stack", "text":"Where do I get the call stack?"},
+			{"dest":"use_call_stack", "text":"How do I use the call stack?"},
+		]
+	},
+	"how_to_obtain_call_stack" : {"advice":"If one is not printed as part of the exception message,"+
+		" then you will need to use a debugger. Place a breakpoint where you want to stop, and execute your code."+
+		" When it encounters your breakpoint, look in the window that shows the call stack."+
+		" (Depending on the debugger, it might be called a \"backtrace\" or \"call trace\". Sometimes it is presented as a list of threads"+
+		" that you can expand to find the call stack for each thread. If you really don't see anything like that, check which windows are not being"+
+		" shown. Every debugger provides some mechanism to view the call stack.)",
+		"img":"huh",
+		"choices": [
+			{"dest":"use_call_stack", "text":"How do I use the call stack?"},
+		]
+	},
+	"do_you_know_what_you_want" : {"advice":"Do you know exactly what you want your code to do?",
+		"img":"huh",
+		"choices": [
+			{"dest":"determine_what_you_want", "text":"No."},
+			{"dest":"computers_are_not_magical", "text":"Well, I know what results I want."},
+			{"dest":"first_differs", "text":"Yes, but I don't understand why my code isn't working."},
+			{"dest":"never_stare_at_code", "text":"I've been staring at my code for hours,"+
+				"and I just want to be done with this project. Can you help me to get there?"},
+		]
+	},
+	"dont_underestimate_knowledge" : {"advice":"Don't underestimate the value of knowledge."+
+		" It is worth taking a temporary detour to obtain it."+
+		" A project that did not require you to design any intermediate steps would be unworthy of your time.",
+		"img":"behold",
+		"choices": [
+			{"dest":"have_a_nice_day", "text":"Thank you, O wise professor, you have elucidated the path before me."},
+			{"dest":"chirp", "text":"Oh, gag me with a spoon!"},
+		]
+	},
+	"dont_want_opinion" : {"advice":"I am not asking for your opinion on the matter."+
+		" I am asking you to determine, for sure, whether your program is in a valid state at this point, or not."+
+		" (If you just guess, you will sometimes be wrong. That will lead to wasting time chasing ghost bugs."+
+		" Even if you think you know the answer, it is usually worth taking the time to determine it for sure.)",
+		"img":"ug",
+		"choices": [
+			{"dest":"how_to_view_variables", "text":"Okay, how do I determine what the values of my variables are?"},
+			{"dest":"how_know_broken", "text":"Everything is definitely right at this point."},
+			{"dest":"when_did_first_take_incorrect_value", "text":"I found an incorrect value. Now, what?"},
+			{"dest":"found_bug", "text":"All variables at this point are correct. It is the code at this point that is wrong."},
+			{"dest":"ok_do_that", "text":"I would have to write more code just to determine whether or not the variables at this point are correct."},
+			{"dest":"simplify_the_problem", "text":"This problem is so complex that I would not even know how to differentiate correct state from incorrect state."},
+		]
+	},
+	"first_differs" : {"advice":"Do you know the point where your program first deviates from the expected behavior?",
+		"img":"eh",
+		"choices": [
+			{"dest":"known_to_differ", "text":"No. That's the problem."},
+			{"dest":"check_values", "text":"Yes."},
+			{"dest":"region_is_not_point", "text":"Well, I know the region where the problem occurs, but all the code around there looks right, so... ?"},
+		]
+	},
+	"found_bug" : {"advice":"Great! You found a bug! Go ahead and fix it, then.",
+		"img":"heyhey",
+		"choices": [
+			{"dest":"check_api_docs", "text":"But, I didn't even write the function that is misbehaving!"},
+			{"dest":"see_a_human", "text":"But, I don't know how to fix it."},
+			{"dest":"start", "text":"Ok, I fixed a bug, but my project still isn't working."},
+		]
+	},
+	"check_api_docs" : {"advice":"Double-check with the API docs. Is that function really behaving differently than"+
+		"the documented behavior for the values you are passing to it?",
+		"img":"huh",
+		"choices": [
+			{"dest":"api_docs", "text":"What are API docs?"},
+			{"dest":"dont_use_undocumented", "text":"I cannot find documentation for this function."},
+			{"dest":"not_clearly_bug", "text":"The documentation is not clear about how it behaves with these values."},
+			{"dest":"file_bug_report", "text":"Yes, I found a bug in a well-documented public library!"},
+		]
+	},
+	"file_bug_report" : {"advice":"Well done! Be sure to file a bug report with the author. If you are in a hurry, you might ask if he or she has a work-around.",
+		"img":"yeah",
+		"choices": [
+			{"dest":"valuable_lesson", "text":"But this is not an open source library!"},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"valuable_lesson" : {"advice":"Well, at least you learned a valuable lesson!",
+		"img":"har",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"not_clearly_bug" : {"advice":"Well, then it is not clear whether or not this is even a bug.",
+		"img":"hmm",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"dont_use_undocumented" : {"advice":"Well, this is what happens when you use undocumented code. Good luck!",
+		"img":"har",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"api_docs" : {"advice":"Formal documentation for the <u>A</u>dvanced <u>P</u>rogrammer <u>I</u>nterfaces (public functions) in a library."+
+		" (They are what you usually find when you search for the function name in a search engine.)",
+		"img":"yadda",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"go_back" : {"advice":"Check the last item on the list...",
+		"img":"bye",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"grr" : {"advice":"...?",
+		"img":"grr",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"have_a_nice_day" : {"advice":"Have a great day!",
+		"img":"heyhey",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"how_know_broken" : {"advice":"Great! So everything is working, then?",
+		"img":"aha",
+		"choices": [
+			{"dest":"known_to_differ", "text":"No, something is definitely wrong."},
+			{"dest":"have_a_nice_day", "text":"Yep, thanks."},
+		]
+	},
+	"how_to_view_variables" : {"advice":"There are many ways to view the contents of your memory."+
+		" One option is to use a debugger. After all, that's what debuggers were designed for!"+
+		" If you are not comfortable using a debugger, you can temporarily add print statements to your code to print out"+
+		" the values you want, then rerun the program. (Be sure to include enough information so you will be able to determine when it printed each line.)"+
+		" If you want to view a collection or complex data structure,"+
+		" you might need to write a special function that to print out the values it contains by iterating over them all."+
+		" (Once you have done that, keep it somewhere--you will probably want that code again in the future.)"+
+		" You could write it all to a log file."+
+		" You could litter your code with checks that throw exceptions if any variables ever take values in unexpected"+
+		" ranges--then your code would practically debug itself!"+
+		" You could write a tool that plots the values on a graph,"+
+		" then you could generate a sequence of graphs and combine them into an animated video ...ooh, that would be cool!"+
+		" Then, you could use crowd-sourcing to look for anomalies in your animated graphs...",
+		"img":"behold",
+		"choices": [
+			{"dest":"identify_variable", "text":"Thanks. I'll do it my own way."},
+		]
+	},
+	"identify_variable" : {"advice":"Now, identify a specific variable or place in memory that"+
+		" has an incorrect value at that point.",
+		"img":"hi",
+		"choices": [
+			{"dest":"how_to_view_variables", "text":"How?"},
+			{"dest":"when_did_first_take_incorrect_value", "text":"Ok, I've got one. Then, what?"},
+			{"dest":"dont_want_opinion", "text":"I think all the variables, here, are right."},
+			{"dest":"found_bug", "text":"All variables at this point are correct. It is the code at this point that is wrong."},
+		]
+	},
+	"known_to_differ" : {"advice":"Then, identify the first point where you know for sure something has already gone wrong.",
+		"img":"huh",
+		"choices": [
+			{"dest":"how_know_broken", "text":"I don't know of any such point."},
+			{"dest":"identify_variable", "text":"Ok, I have it."},
+		]
+	},
+	"license" : {"advice":"Certainly! I have dedicated the automated professor to the public domain"+
+		" (see <a href=\"http://creativecommons.org/publicdomain/zero/1.0/\">Creative Commons Zero</a>),"+
+		" so you are free to do what you like with it."+
+		" You can scrape it onto your machine with the command"+
+		"<pre>"+
+		"\twget -np -krpL <i>[url]</i>"+
+		"</pre>"+
+		"where <i>[url]</i> is the URL you see right now in your URL bar (up to the last '/').",
+		"img":"heyhey",
+		"choices": [
+			{"dest":"try_new_things", "text":"What is that mumbo jumbo? Can you provide a graphical wizard that works on Windows?"},
+			{"dest":"pay_it_forward", "text":"This is great! Can I give you $5?"},
+		]
+	},
+	"never_stare_at_code" : {"advice":"I commend your persistence, but..."+
+		" <b>NEVER spend large amounts of time staring at code!</b>"+
+		" That approach may seem to work, sometimes, with the tiny projects you do in school, but it cannot scale."+
+		" When you work on projects of any reasonable size,"+
+		" Comprehending all of the code at once will become impossible."+
+		" Then, how are you going to find your bugs?"+
+		" Staring at code is a bad habit that will only torture you until you learn to quit."+
+		" Computer scientists must learn to find bugs systematically,"+
+		" without having to comprehend all the code at once."+
+		" You have wasted your time.",
+		"img":"no",
+		"choices": [
+			{"dest":"first_differs", "text":"Okay, I will never do that again. So, how do I find my bug(s) systematically?"},
+			{"dest":"simplify_the_problem", "text":"I know how to be systematic, and I want to do it,"+
+				" but this problem is so complex that I don't know how to differentiate"+
+				" correct state from incorrect state. That's why I have just been aimlessly looking for bugs."},
+			{"dest":"change_major", "text":"I don't want to be systematic. I am a human being, not a machine."},
+		]
+	},
+	"ok_do_that" : {"advice":"OK, do that.",
+		"img":"yeah",
+		"choices": [
+			{"dest":"identify_variable", "text":"Fine."},
+		]
+	},
+	"one_shot" : {"advice":"Well, if your bug moves every time you run the program,"+
+		" then you will just have to debug your program in one shot."+
+		" The best way to do that is to instrument your program with lots of logging."+
+		" Then, you examine the logs to figure out what happened."+
+		" If you cannot figure out what happened from your logs,"+
+		" you need to log more things, and try again.",
+		"img":"gasp",
+		"choices": [
+			{"dest":"have_a_nice_day", "text":"I see the wisdom in confining non-determinism to small regions of code."},
+		]
+	},
+	"pay_it_forward" : {"advice":"No thanks! Just pay it forward.",
+		"img":"yeah",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"region_is_not_point" : {"advice":"A region is not a point.",
+		"img":"aha",
+		"choices": [
+			{"dest":"known_to_differ", "text":"Good point."},
+			{"dest":"chirp", "text":"Yes it is."},
+		]
+	},
+	"run_in_debugger" : {"advice":"You need to run this in a debugger. Then, examine the call stack or backtrace.",
+		"img":"yeah",
+		"choices": [
+			{"dest":"try_new_things", "text":"I'm not very comfortable with debuggers. Can't I just debug this using print statements?"},
+			{"dest":"what_is_call_stack", "text":"What is a call stack, and how do I examine one?"},
+		]
+	},
+	"seed_prng" : {"advice":"To make your program deterministic,"+
+		"<ol>"+
+		"<li>Make sure that all of the pseudo random number generators that you use"+
+		" anywhere in your code are seeded with constant values,</li>"+
+		"<li>Make sure your program runs in a single thread, and</li>"+
+		"<li>Make sure your program doesn't depend on any non-deterministic things,"+
+		" like mouse clicks or network communication.</li>"+
+		"</ol>",
+		"img":"yadda",
+		"choices": [
+			{"dest":"check_values", "text":"Okay, I made it deterministic, and I have isolated the problematic point."},
+			{"dest":"one_shot", "text":"Sorry, my program is non-deterministic, it has to be that way, and I still need to debug it."},
+		]
+	},
+	"simplify_the_problem" : {"advice":"Then you need to simplify the problem."+
+		" Design a very simple version of the problem that you can use to debug your code."+
+		" I recommend starting so small and simple that the expected behavior becomes obvious and trivial."+
+		" Then, if your simplified version does not exhibit the bug, you can ratchet up from there.",
+		"img":"aha",
+		"choices": [
+			{"dest":"dont_underestimate_knowledge", "text":"But I was not assigned to solve some easy problem. I was assigned to solve the hard one."},
+			{"dest":"see_a_human", "text":"I need help designing a suitable simplified problem."},
+			{"dest":"big_guns", "text":"Even with the simplest possible problem that exposes this bug, it's hard to tell valid state from invalid state."},
+		]
+	},
+	"static_pages" : {"advice":"No, this web page was made only using human intelligence, ...but we're working on that.",
+		"img":"har",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"thats_new_variable" : {"advice":"Great! We're getting closer to finding the bug!"+
+		" Now, determine when that variable first took on an incorrect value.",
+		"img":"yeah",
+		"choices": [
+			{"dest":"binary_search", "text":"How?"},
+			{"dest":"found_bug", "text":"I found where that happens, and the code at that point needs fixing."},
+			{"dest":"when_did_first_take_incorrect_value", "text":"I found where that happens, but the code there looks correct. My variable got its incorrect value from another variable with an incorrect value."},
+		]
+	},
+	"try_new_things" : {"advice":"Experience cannot be delivered to your comfort zone."+
+		" Don't be afraid to try new things."+
+		" You are too young to be set in your ways."+
+		" Worthwhile things are rarely easy."+
+		" That headache you get when you learn new things is just ignorance departing from your mind."+
+		" ...blah blah blah.",
+		"img":"behold",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"when_did_first_take_incorrect_value" : {"advice":"Determine when that variable first took on the incorrect value.",
+		"img":"aha",
+		"choices": [
+			{"dest":"binary_search", "text":"How?"},
+			{"dest":"found_bug", "text":"I found where that happens, and the code at that point needs fixing."},
+			{"dest":"thats_new_variable", "text":"I found where that happens, but the code there looks correct. My variable got its incorrect value from another variable with an incorrect value."},
+		]
+	},
+	"you_must_check" : {"advice":"If you didn't explicitly check, you don't know."+
+		" ...and, you need to <u>know</u>, not just have a lot of confidence."+
+		" People with far more experience than you cannot just look at code and know it is bug-free."+
+		" I know it sounds like a bother, but you really need to check.",
+		"img":"listen",
+		"choices": [
+			{"dest":"check_values", "text":"Okay, I tested it, and I have actual evidence, now."},
+			{"dest":"add_a_counter", "text":"But, there's a loop, and the problem only occurs after many iterations!"},
+		]
+	},
+	"incentive_to_be_independent" : {"advice":"Consider this your incentive to cultivate independent proficiency.",
+		"img":"har",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"use_debugger" : {"advice":"This is a job for a debugger. First, rebuild your program to include debug symbols,"+
+		" then run it inside the debugger. When the issue occurs, the debugger will stop, and you will be able to"+
+		" examine the call stack and variables to determine what caused the problem.",
+		"img":"aha",
+		"choices": [
+			{"dest":"g_flag", "text":"How do I tell the compiler to add debug symbols?"},
+			{"dest":"try_new_things", "text":"I was hoping to solve this without using a debugger."},
+			{"dest":"recommend_debugger", "text":"Can you recommend a decent debugger?"},
+		]
+	},
+	"g_flag" : {"advice":"With javac and g++ you specify \"-g\" as a command-line flag to tell the compiler to include debug symbols." +
+		"However, other compilers may use a different switch.",
+		"img":"yadda",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"recommend_debugger" : {"advice":"For Java, I use Eclipse. My students seem to prefer NetBeans, but I haven't tried it." +
+		" For C++, I like KDevelop. Other options include gdb and kdb, but these do not provide a sufficiently friendly GUI for my debugging preferences." +
+		" For other languages, I have little advice. Try a search engine.",
+		"img":"yadda",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"assertion" : {"advice":"An assertion is a debug-check that warns you about some unexpected condition."+
+		" (These conditions are typically not even checked when optimized code is built, so it is lucky that you have been warned about the problem."+
+		" I recommend that you do not just ignore it until you first investigate why it happened.)"+
+		" Usually, the text of the assertion will give you a line number and some information to work with." +
+		" Or, you might be able to search your source code for the text of the assertion.",
+		"img":"hi",
+		"choices": [
+			{"dest":"use_debugger", "text":"The text of this assertion provides little helpful information."},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"pipe_to_file" : {"advice":"We are probably going to have to read that text to figure out what is happening."+
+		" A good way to do that is to pipe it to a file. For example, if you run your program like this,"+
+		" \"./myprogram myargs > stdout.txt 2> stderr.txt\", then the output will be piped to two files."+
+		" Then, you can inspect those two files to see what it said.",
+		"img":"hmm",
+		"choices": [
+			{"dest":"what_does_it_say", "text":"Okay, then what?"},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"oom" : {"advice":"If you are using Java, try increasing the heap size. Example: \"java -Xmx4g MyProgram\"."+
+		" Otherwise, it looks like you are running out of memory. Your choices are:"+
+		" (1) get more memory, or (2) fix your code to make better use of memory. If you are using C++,"+
+		" you might try valgrind to help you find memory leaks.",
+		"img":"hmm",
+		"choices": [
+			{"dest":"valgrind", "text":"Tell me about Valgrind."},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"what_does_it_say" : {"advice":"Well, we need a clue about the problem. what does it say!?",
+		"img":"grr",
+		"choices": [
+			{"dest":"start", "text":"Oh, now I know something about the problem."},
+		]
+	},
+	"file_not_found" : {"advice":"I will assume that you already checked that the file is there ...right?"+
+		" Okay, then you need to know what folder your program is actually in when it tries to open the file."+
+		" So, go to the point just before your code attempts to open the file, and add some code to print"+
+		" the current working directory. Append the relative filename you are trying to open to the current"+
+		" working directory to get the full path that it is trying to open. Then, check whether it really refers"+
+		" to a valid file.",
+		"img":"yadda",
+		"choices": [
+			{"dest":"check_permissions", "text":"I did that. The full path correctly refers to an existing file."},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"check_permissions" : {"advice":"Then it must be a permissions issue. Make sure your program is executing as"+
+		" a user that has permission to access that file.",
+		"img":"aha",
+		"choices": [
+			{"dest":"how_to_permissions", "text":"How do I do that?"},
+			{"dest":"have_a_nice_day", "text":"That's it! Thanks."},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"how_to_permissions" : {"advice":"Try running as root. Or, use your favorite search engine to learn about \"chmod\".",
+		"img":"hmm",
+		"choices": [
+			{"dest":"have_a_nice_day", "text":"Okay."},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"make_it_deterministic" : {"advice":"Then fix your code to behave deterministically. Seed your pseudo-random number"+
+		" generators with constant values (not based on the current time or process ID), and write temporary code as needed"+
+		" to take any human responses out of the loop.",
+		"img":"aha",
+		"choices": [
+			{"dest":"use_verbose_logging", "text":"I cannot do that. My code depends on non-deterministic factors, and they must be present to expose the bug."},
+		]
+	},
+	"use_verbose_logging" : {"advice":"Then you are going to have to solve this with verbose logging."+
+		" Litter your code with print statements to give you all the information that you could possibly need later."+
+		" Then, run your program, piping the output to a file, and keep running until the problem occurs. Then, study the log file until you understand the problem."+
+		" Sorry, that's really the only solution I know for non-deterministic problems.",
+		"img":"gasp",
+		"choices": [
+			{"dest":"dont_underestimate_knowledge", "text":"Ug. That sounds like a big pain."},
+		]
+	},
+	"use_call_stack" : {"advice":"Start at the top of the stack."+
+		" This tells where the problem was first detected."+
+		" If you did not write this code, then move down the stack until you arrive at something you did write."+
+		" This is where you passed an unexpected value to the function or method that you called."+
+		" So, figure out why you did that."+
+		" If your code was just passing a value through,"+
+		" then keep moving down the stack to find where it came from.",
+		"img":"hi",
+		"choices": [
+			{"dest":"run_again", "text":"I need to know exactly what value was passed, and I don't see that information anywhere."},
+			{"dest":"code_not_problem", "text":"There is no code in this call stack that I wrote."},
+			{"dest":"need_symbols", "text":"This call stack is very vague. It doesn't give any filenames or line numbers."},
+			{"dest":"look_closer", "text":"Everything in this stack looks fine. I don't understand why there is a problem."},
+		]
+	},
+	"run_again" : {"advice":"You can either run your program again inside a debugger and use it to inspect the values,"+
+		" or you can add print statements to print the values you need.",
+		"img":"eh",
+		"choices": [
+			{"dest":"make_it_deterministic", "text":"But the problem may not occur when I run it again."},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"try_search_engine" : {"advice":"Did you try a <a href=\"https://duckduckgo.com/\">search</a> <a href=\"https://startpage.com/\">engine</a>?",
+		"img":"yeah",
+		"choices": [
+			{"dest":"see_a_human", "text":"Of course. I always try that first."},
+		]
+	},
+	"look_closer" : {"advice":"Then look closer. Exceptions do not just happen by themselves. The code explicitly threw an exception."+
+		" If the code was wrong to throw an exception, then that is the problem. If the code was right to throw the exception, then "+
+		" there is a bug for you to find. Either way, there is a problem.",
+		"img":"listen",
+		"choices": [
+			{"dest":"first_differs", "text":"Okay, something is wrong, then. So how do I find the problem?"},
+		]
+	},
+	"need_symbols" : {"advice":"Usually that means your binary application does not contain debug symbols."+
+		" You need to rebuild it with debug symbols.",
+		"img":"eh",
+		"choices": [
+			{"dest":"g_flag", "text":"How to I rebuild with debug symbols?"},
+		]
+	},
+	"valgrind_overwhelming" : {"advice":"They are all real issues."+
+		" The right thing to do is figure out what the first one is all about, and fix it."+
+		" Usually, each one you fix will resolve several occurrences, so it's probably not as bad as it looks.",
+		"img":"eh",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"valgrind_slow" : {"advice":"Yeah, that's the price of using a tool that automatically finds your bugs."+
+		" If it is unreasonably slow, you might generate a simplified copy of your code"+
+		" that operates on a smaller problem, or skips that parts that you know are bug-free.",
+		"img":"eh",
+		"choices": [
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+	"valgrind" : {"advice":"You are using C or C++, right? If so, the best way to deal with a memory issue is to"+
+		" run your program inside a validation tool. My favorite validation tool is called <a href=\"http://valgrind.org/\">Valgrind</a>."+
+		" It is available on Linux and Mac. You can run your program in it, like this:"+
+		"<pre>"+
+		"\tvalgrind ./myprogram [myargs]"+
+		"</pre>"+
+		"It will often find lots of bugs and report them with a call stack that you can use to hunt down the cause.",
+		"img":"yadda",
+		"choices": [
+			{"dest":"grr", "text":"...but I only want to use Windows."},
+			{"dest":"see_a_human", "text":"No, I'm getting this in a high-level language, like Java or Python."},
+			{"dest":"valgrind_slow", "text":"It's making my code run really slowly."},
+			{"dest":"valgrind_overwhelming", "text":"It reports bazillions of errors. How do I find the ones that matter?"},
+		]
+	},
+/*	"borken" : {
+		"img":"nonexistent",
+		"choices": [
+			{"dest":"xxx", "text":"Broken link."},
+		]
+	},*/
+};
+
+
+
+
+// Let's begin at the beginning.
+show_state("start", null);
+
+/* Template page:
+	"xxx" : {"advice":"xxx",
+		"img":"hmm",
+		"choices": [
+			{"dest":"xxx", "text":"xxx"},
+			{"dest":"start", "text":"Start over."},
+		]
+	},
+*/
+</script>
+
+</body></html>
