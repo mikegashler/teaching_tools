@@ -18,3 +18,6 @@ A PHP page that provides students with the ability to view their scores.
 
 # record_lecture_scripts
 Some scripts I wrote for recording lectures and processing and distributing the videos.
+
+# group_site
+An extremely light weight wiki-like web site implemented with just a few simple PHP pages.
