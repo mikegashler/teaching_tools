@@ -1,5 +1,7 @@
 <?php session_start();
 	$password = "change_me";
+	$header = "<?php include 'header.php'; ?>";
+	$footer = "<?php include 'footer.php'; ?>";
 	if(isset($_GET['edit']))
 	{
 		print("<!doctype html><html><body>\n");
@@ -34,6 +36,35 @@ function insertTab(o, e)
 	}
 	return true;
 }
+
+// This function checks whether a file with this name already exists.
+<?php
+$files = scandir(".");
+print("var pages = [");
+for($i = 0; $i < count($files); $i++)
+{
+	if($i > 0)
+		print(",");
+	
+	print("\"" . $files[$i] . "\"");
+}
+print("];\n");
+?>
+function checkFilename(field)
+{
+	var found = false;
+	for(var i = 0; i < pages.length; i++)
+	{
+		if(field.value == pages[i])
+			found = true;
+	}
+	var el = document.getElementById("exists");
+	if(found)
+		el.style.display = 'block';
+	else
+		el.style.display = 'none';
+	return false;
+}
 </script>
 <?php		$pagename = htmlentities($_GET['edit']);
 		$lastslash = strrpos($pagename, '/');
@@ -42,11 +73,18 @@ function insertTab(o, e)
 		if($pagename == "edit.php")
 			die("security violation");
 		$contents = file_get_contents($pagename);
+		$headerpos = strpos($contents, $header);
+		$footerpos = strpos($contents, $footer);
+		if($headerpos === FALSE || $footerpos === FALSE)
+			die("could not find the expected header and footer");
+		$headerpos += strlen($header);
+		$contents = substr($contents, $headerpos, $footerpos - $headerpos);
 		if($contents === FALSE)
 			die("failed to load the file: " . $pagename);
 		print("<form action=\"edit.php\" method=\"post\" id=\"editform\">\n");
 		print("Filename:<br>\n");
-		print("	<input type=\"text\" name=\"page\" value=\"" . $pagename . "\">\n");
+		print("	<input type=\"text\" name=\"page\" value=\"" . $pagename . "\" onKeyUp=\"checkFilename(this)\"><br>\n");
+		print("<span id=\"exists\"> (Existing file)</span>\n");
 		print("<br><br>Page source:<br>\n");
 		print("<textarea rows=\"40\" cols=\"120\" name=\"content\" form=\"editform\" onkeydown=\"insertTab(this, event);\">");
 		print($contents);
@@ -71,29 +109,27 @@ function insertTab(o, e)
 
 			// Check the path
 			$pagename = htmlentities($_POST['page']);
+			if(strlen($pagename) < 4 || substr($pagename, strlen($pagename) - 4, 4) != ".php")
+				die("the page name must end with .php");
 			$lastslash = strrpos($pagename, '/');
-			if($lastslash !== FALSE)
+			if($lastslash !== FALSE || $pagename == "header.php" || $pagename == "footer.php")
 				die("invalid pagename: " . $pagename);
 
 			// Check for dangerous content
 			if(stripos($_POST['content'], "<script") !== FALSE)
 				die("Scripts are not allowed");
 			$len = strlen($_POST['content']);
-			for($i = 0; $i < $len; )
+			$ofs = strpos($_POST['content'], "<?", $i);
+			if($ofs !== FALSE)
 			{
-				$ofs = strpos($_POST['content'], "<?", $i);
-				if($ofs === FALSE)
-					break;
 				$sub = substr($_POST['content'], $ofs, 30);
-				if($sub != "<?php include 'header.php'; ?>" && $sub != "<?php include 'footer.php'; ?>")
-					die("For security reasons, PHP code is not allowed, except to include the header or footer. The offending snip is: " . htmlentities($sub));
-				$i = $ofs + 1;
+				die("Sorry, for security reasons, PHP code is not allowed. Only HTML is allowed. The offending snip is: " . htmlentities($sub));
 			}
 
 			// Save it
 			$datestring = date('_Y-m-d_h-i-s_', time());
 			rename($pagename, "history/" . $pagename . $datestring . $pagename);
-			if(file_put_contents($pagename, $_POST['content']) === FALSE)
+			if(file_put_contents($pagename, $header . $_POST['content'] . $footer) === FALSE)
 				die("Failed to write to file: " . $pagename);
 			header('Location: ' . $pagename);
 			print("<!doctype html><html><body>\n");
