@@ -2,6 +2,7 @@
 	$file_path = "/var/www/html/paradigms/";
 	$web_path = "http://uaf56986.ddns.uark.edu/paradigms/";
 	$return_url = "http://uaf46365.ddns.uark.edu/paradigms/";
+	$lock_date = "2016-12-08";
 ?>
 
 <html>
@@ -53,7 +54,9 @@
 			$new_ann->descr = $_GET['descr'];
 		else
 			$new_ann->descr = "";
-		if(strstr($new_ann->time, ":") === FALSE)
+		if(strcmp($new_ann->video, $lock_date) <= 0)
+			print("Annotations before " . $lock_date . " are currently locked.");
+		else if(strstr($new_ann->time, ":") === FALSE)
 			print("Expected a : in the timestamp.");
 		else if($new_ann->descr !== htmlentities($new_ann->descr))
 			print("HTML entities are not allowed.");
@@ -116,14 +119,15 @@
 	{
 		print("<tr>");
 		// Low resolution video
-		print("<td valign=top><a href=\"" . $web_path . $small_videos[$i] . "\" target=\"_blank\">" . substr($small_videos[$i], 5) . "</a></td>");
+		$display_name = substr($small_videos[$i], 5);
+		print("<td valign=top><a href=\"" . $web_path . $small_videos[$i] . "\" target=\"_blank\">" . $display_name . "</a></td>");
 
 		// High resolution video
-		$high_res_index = array_search(substr($small_videos[$i], 5), $big_videos);
+		$high_res_index = array_search($display_name, $big_videos);
 		if($high_res_index === FALSE)
 			print("<td></td>");
 		else
-			print("<td valign=top><a href=\"" . $web_path . $big_videos[$high_res_index] . "\" target=\"_blank\">" . substr($small_videos[$i], 5) . "</a></td>");
+			print("<td valign=top><a href=\"" . $web_path . $big_videos[$high_res_index] . "\" target=\"_blank\">" . $display_name . "</a></td>");
 		print("<td>");
 
 		// Table of annotations
@@ -132,7 +136,7 @@
 		for($j = 0; $j < sizeof($annotations); $j++)
 		{
 			$ann = $annotations[$j];
-			if($ann->video === substr($small_videos[$i], 5))
+			if($ann->video === $display_name)
 			{
 				print("<tr><td>" . $ann->time . "</td><td>" . $ann->descr . "</td></tr>");
 			}
@@ -140,13 +144,16 @@
 		print("</table>");
 
 		// Form to add new annotations
-		print("<form>");
-		print("<input type=\"hidden\" name=\"video\" value=\"" . substr($small_videos[$i], 5) . "\">");
-		print("<input type=\"text\" name=\"time\" size=\"3\">");
-		print("<input type=\"text\" name=\"descr\" size=\"25\">");
-		print("<input type=\"submit\" value=\"Add\">");
-		print("</form></td>");
-		print("</tr>\n");
+		if(strcmp($display_name, $lock_date) > 0)
+		{
+			print("<form>");
+			print("<input type=\"hidden\" name=\"video\" value=\"" . $display_name . "\">");
+			print("<input type=\"text\" name=\"time\" size=\"3\">");
+			print("<input type=\"text\" name=\"descr\" size=\"25\">");
+			print("<input type=\"submit\" value=\"Add\">");
+			print("</form></td>");
+			print("</tr>\n");
+		}
 	}
 	print("</table>\n");
 ?>
