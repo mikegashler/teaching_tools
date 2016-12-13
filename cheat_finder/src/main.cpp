@@ -1100,7 +1100,7 @@ public:
 		}
 
 		// Drop the infrequent chunks from chunk_counts
-		size_t thresh = m_submissions.size() / 2;
+		size_t thresh = std::max(6ul, m_submissions.size() / 4);
 		auto it = chunk_counts.begin();
 		while(it != chunk_counts.end())
 		{
@@ -1140,6 +1140,13 @@ public:
 		// Check parameters
 		if(chdir(args.pop_string()) != 0)
 			throw Ex("Failed to chdir");
+		string subst = "";
+		if(args.size() > 0)
+		{
+			subst = args.pop_string();
+			cout << "Comparing all pairs where at least one folder contains the string \"" << subst << "\"\n";
+		}
+		
 		vector<string> folders;
 		GFile::folderList(folders, ".");
 		if(folders.size() < 2)
@@ -1161,6 +1168,8 @@ public:
 			for(size_t j = 0; j < m_submissions.size(); j++)
 			{
 				if(j == i)
+					continue;
+				if(subst.length() > 0 && m_submissions[i]->name.find(subst) == string::npos && m_submissions[j]->name.find(subst) == string::npos)
 					continue;
 				double overlap = m_submissions[i]->compare(*m_submissions[j]);
 				//cout << to_str(overlap * 100.0) << "% of " << m_submissions[i]->name << " is in " << m_submissions[j]->name << "\n";
@@ -1201,9 +1210,12 @@ void doit(GArgReader& args)
 		cout << "  cheater [action]\n";
 		cout << "    where [action] is any of:\n";
 		cout << "\n";
-		cout << "      find [folder]\n";
+		cout << "      find [folder] <sub>\n";
 		cout << "        Compare the contents of each sub-folder in [folder]\n";
 		cout << "        and report those that are most similar.\n";
+		cout << "        If the optional parameter <sub> is specified,\n";
+		cout << "        only foldernames containing the substring <sub>\n";
+		cout << "        will be examined.\n";
 		cout << "\n";
 		cout << "      compare [folder1] [folder2]\n";
 		cout << "        Compute the portion of [folder1] contained in [folder2].\n";
