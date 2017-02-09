@@ -34,6 +34,9 @@ fi
 # Touch all the files (to prevent "clock skew" build issues)
 find . -exec touch {} \;
 
+# Rename folders with a space in them
+find . -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
+
 # Change into the folder with the build script, and make sure it is named "build_and_run.bash"
 if [ ! -f build_and_run.bash ]; then
 	if [ -f build_and_run.bat ]; then sudo -u sandbox cp build_and_run.bat build_and_run.bash; else
@@ -65,7 +68,7 @@ if [ ! -f build_and_run.bash ]; then
 fi
 
 # Make sure the 
-if [ ! -f build_and_run.bash ]; then echo "No build script was found! Expected to find a file named build_and_run.bash or build_and_run.bat"; exit; fi
+if [ ! -f build_and_run.bash ]; then echo "No build script was found! Expected to find a file named build.bash or build.bat"; exit; fi
 sudo -u sandbox chmod 755 ./build_and_run.bash
 sudo -u sandbox dos2unix -q ./build_and_run.bash
 
@@ -81,7 +84,7 @@ sudo -u sandbox ./build_and_run.bash &
 
 # Start a time-out timer
 CHILD_PID=$!
-TIME_LIMIT=300
+TIME_LIMIT=120
 for (( i = 0; i < $TIME_LIMIT; i++ )); do
 	sleep 1
 
