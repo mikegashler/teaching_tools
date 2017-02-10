@@ -1006,7 +1006,7 @@ public:
 			if(it2 != that.chunks.end())
 				matches++;
 		}
-		return((double)matches / chunks.size());
+		return((double)matches / (chunks.size() + 1));
 	}
 };
 
