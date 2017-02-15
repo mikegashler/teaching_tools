@@ -64,10 +64,11 @@ String.prototype.utf8Encode=function(){return unescape(encodeURIComponent(this))
 if(typeof String.prototype.utf8Decode=='undefined'){String.prototype.utf8Decode=function()
 {try{return decodeURIComponent(escape(this));}catch(e){return this;}};}
 
+<?php print("var salt=\"" . $salt . "\";\n"); ?>
 
 function hashPasswordAndSubmit() {
 	var rawPassword = document.forms["login"]["password"].value;
-	var hashedPassword = Sha256.hash(rawPassword);
+	var hashedPassword = Sha256.hash(salt + rawPassword);
 	//alert(hashedPassword);
 	document.forms["login"]["password"].value = hashedPassword;
 	document.forms["login"].submit();
@@ -75,7 +76,7 @@ function hashPasswordAndSubmit() {
 
 function hashNewPasswordAndSubmit() {
 	var rawPassword = document.forms["change"]["changepassword"].value;
-	var hashedPassword = Sha256.hash(rawPassword);
+	var hashedPassword = Sha256.hash(salt + rawPassword);
 	document.forms["change"]["changepassword"].value = hashedPassword;
 	document.forms["change"].submit();
 }
@@ -109,7 +110,9 @@ function hashNewPasswordAndSubmit() {
 			if(strcmp($fullname, $_POST['username']) == 0)
 			{
 				$founduser = true;
-				if(strcmp(trim($_POST['password']), trim($rowArray[2])) == 0 || strcmp(trim($_POST['password']), hash('sha256', trim($rowArray[2]))) == 0)
+				$hashedEntry = trim($rowArray[2]);
+				if(strcmp(trim($_POST['password']), $hashedEntry) == 0 || // Check against hashed entry in accounts.csv
+					strcmp(trim($_POST['password']), hash('sha256', $salt . $hashedEntry)) == 0) // Check against unhashed entry in accounts.csv (using the PHP implementation of sha256)
 				{
 					// Log in
 					$_SESSION['realname'] = $fullname;
@@ -119,7 +122,6 @@ function hashNewPasswordAndSubmit() {
 				else
 				{
 					print("Incorrect password for " . $fullname . "<br><br>\n");
-//print("\n<!-- got " . trim($_POST['password']) . ", expected " . trim($rowArray[2]) . ", hash " . hash('sha256', trim($rowArray[2])) . " -->\n");
 					if(strlen($_POST['username']) < 1)
 						print("Someone has already changed the password for this account. If it was not you, then please notify the instructor immediately!<br><br>\n");
 					else
@@ -167,6 +169,20 @@ function hashNewPasswordAndSubmit() {
 			else
 				print("Sorry, commas are not allowed in passwords.<br><br>\n");
 		}
+	}
+
+	function col($i)
+	{
+		if($i < 26)
+			return chr(97 + $i);
+		$i -= 26;
+		if($i < 26)
+			return 'a' . chr(97 + $i);
+		$i -= 26;
+		if($i < 26)
+			return 'b' . chr(97 + $i);
+		$i -= 26;
+		return 'c' . chr(97 + $i);
 	}
 
 	// Show the page content
@@ -217,7 +233,7 @@ function hashNewPasswordAndSubmit() {
 		</form><br><br>
 <?php
 		// Force new users to change password
-		if(strcmp($_SESSION['password'], "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855") == 0)
+		if(strcmp($_SESSION['password'], hash('sha256', $salt)) == 0)
 			die("You cannot view your scores until you change your password.");
 
 		// Show scores
@@ -275,7 +291,7 @@ function hashNewPasswordAndSubmit() {
 					for($i = 2; $i < $weightcols; $i++) {
 						if($i > 2)
 							$formula = $formula . "+";
-						$formula = $formula . chr(97 + $i) . "3";
+						$formula = $formula . col($i) . "3";
 					}
 				}
 				else if($linenum > 3) { // If this is a "student scores" line...
@@ -283,7 +299,7 @@ function hashNewPasswordAndSubmit() {
 					for($i = 2; $i < $weightcols; $i++) {
 						if($i > 2)
 							$formula = $formula . "+";
-						$formula = $formula . "if(" . chr(97 + $i) . "$3>0," . chr(97 + $i) . $printline . "/" . chr(97 + $i) . "$2*" . chr(97 + $i) . "$3,0)";
+						$formula = $formula . "if(" . col($i) . "$3>0," . col($i) . $printline . "/" . col($i) . "$2*" . col($i) . "$3,0)";
 					}
 
 					// Tab out to the second-to-last column
@@ -294,7 +310,7 @@ function hashNewPasswordAndSubmit() {
 					}
 
 					// Add a final formula cell to calculate the score
-					$formula = $formula . "\t=" . chr(97 + $col) . $printline . "/" . chr(97 + $col) . "$3";
+					$formula = $formula . "\t=" . col($col) . $printline . "/" . col($col) . "$3";
 				}
 				$ss = $ss . $formula . "\n";
 				print("</tr>\n");
@@ -308,11 +324,11 @@ function hashNewPasswordAndSubmit() {
 		{
 			$ss = $ss . "	Median";
 			for($i = 0; $i < $weightcols; $i++)
-				$ss = $ss . "	=median(" . chr(99 + $i) . "4:" . chr(99 + $i) . ($linenum - 1) . ")";
+				$ss = $ss . "	=median(" . col(2 + $i) . "4:" . col(2 + $i) . ($linenum - 1) . ")";
 			$ss = $ss . "\n";
 			$ss = $ss . "	Average";
 			for($i = 0; $i < $weightcols; $i++)
-				$ss = $ss . "	=average(" . chr(99 + $i) . "4:" . chr(99 + $i) . ($linenum - 1) . ")";
+				$ss = $ss . "	=average(" . col(2 + $i) . "4:" . col(2 + $i) . ($linenum - 1) . ")";
 			$ss = $ss . "\n";
 		}
 
@@ -321,8 +337,8 @@ function hashNewPasswordAndSubmit() {
 		if(!$founduser)
 			print("<big><big><big>No scores have yet been entered for " . $_SESSION['realname'] . ". If you should have scores, please contact the instructor.</big></big></big>");
 		print("<br><br><br><br><h3>Spreadsheet-friendly version:</h3>\n");
-		print("<p>Instructions:<ol><li>Copy the following blob of text.</li><li>Paste it into a text editor (to strip the HTML metadata that your clipboard preserves).</li><li>Copy it from the text editor.</li><li>Paste it into cell A1 in LibreOffice Spreadsheet. (Use only tabs as separators. Do not let commas be separators.)</li><li>To see your current score, set the weight of any assignments you have not yet submitted to 0.</li></ol>\n");
-		print("<font size=0><small><small><pre class=\"code\">\n" . $ss . "</pre></small></small></font>");
+		print("<p>Instructions:<ol><li>Copy the text below (ctrl-C).</li><li>Open LibreOffice spreadsheet and paste into cell A1. (Use only tabs as separators. Do not let commas be separators.)</li><li>To see your current score, set the weight of any assignments you have not yet submitted to 0.</li></ol>\n");
+		print("<font size=0><small><small><textarea onfocus=\"this.select()\" readonly=\"readonly\" autofocus rows=10 cols=100 class=\"code\">\n" . $ss . "</textarea></small></small></font>");
 	}
 ?>
 <br><br><br><br><br><br><br><br>
