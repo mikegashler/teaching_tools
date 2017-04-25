@@ -3,7 +3,8 @@
 
 	$base_path = "/home/mike/rs/paradigms/";
 	$return_url = "http://uaf46365.ddns.uark.edu/paradigms/";
-	$grader_name = "Phan,Hiep";
+	$grader_name = "Smith,Nobody";
+	$salt = "ei3uvfjdkv7cssoel6salcuyrfi4oen8msslo0odgfjh38f6xsjdzsksahfus82d";
 ?>
 
 <html>
