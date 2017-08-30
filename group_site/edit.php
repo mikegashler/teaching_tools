@@ -66,7 +66,8 @@ function checkFilename(field)
 	return false;
 }
 </script>
-<?php		$pagename = htmlentities($_GET['edit']);
+<?php
+		$pagename = htmlentities($_GET['edit']);
 		$lastslash = strrpos($pagename, '/');
 		if($lastslash !== FALSE)
 			die("bogus pagename: " . $pagename);
@@ -96,6 +97,18 @@ function checkFilename(field)
 		print(">\n");
 		print("<br><br><input type=\"submit\" value=\"Save\">\n");
 		print("</form>\n");
+?>
+<br><br><br><br><br><br><br><br><br><br>
+<h3>Or upload and image</h3>
+<form action="edit.php" method="post" id="uploadpic" enctype="multipart/form-data">
+Choose an image to upload:
+	<input type="hidden" name="upload_image" value="upload_image">
+	<input type="file" name="fileToUpload" id="fileToUpload"><br>
+	Password (if you don't know it, just ask someone who does):<br>
+	<input type="password" name="password"><br>
+	<input type="submit" name="submit" value="Upload Image">
+</form>
+<?php
 		print("</body></html>\n");
 	}
 	else if(isset($_POST['content']))
@@ -104,7 +117,10 @@ function checkFilename(field)
 		{
 			// Check the password
 			if(!isset($_POST['password']) || $_POST['password'] != $password)
+			{
+				sleep(5); // Make it difficult to brute-force
 				die("Incorrect password");
+			}
 			$_SESSION['password'] = $_POST['password'];
 
 			// Check the path
@@ -144,6 +160,66 @@ function checkFilename(field)
 			print("</body></html>\n");
 		}
 	}
+	else if(isset($_POST['upload_image']))
+	{
+		// Check the password
+		if(!isset($_POST['password']) || $_POST['password'] != $password)
+		{
+			sleep(5);
+			die("Incorrect password");
+		}
+
+		$target_dir = "pics/";
+		$target_file = $target_dir . basename($_FILES["fileToUpload"]["name"]);
+		$uploadOk = 1;
+		$imageFileType = pathinfo($target_file,PATHINFO_EXTENSION);
+		
+		// Check if image file is a actual image or fake image
+		if(isset($_POST["submit"])) {
+			$check = getimagesize($_FILES["fileToUpload"]["tmp_name"]);
+			if($check !== false) {
+				//echo "File is an image - " . $check["mime"] . ".";
+				$uploadOk = 1;
+			} else {
+				echo "File is not an image.";
+				$uploadOk = 0;
+			}
+		}
+		
+		// Check if file already exists
+		if (file_exists($target_file)) {
+			echo "Sorry, file already exists.";
+			$uploadOk = 0;
+		}
+		
+		// Check file size
+		if ($_FILES["fileToUpload"]["size"] > 500000) {
+			echo "Sorry, your file is too large.";
+			$uploadOk = 0;
+		}
+		
+		// Allow certain file formats
+		if($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg"
+		&& $imageFileType != "gif" ) {
+			echo "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
+			$uploadOk = 0;
+		}
+		
+		// Check if $uploadOk is set to 0 by an error
+		if ($uploadOk == 0) {
+			echo "Sorry, your file was not uploaded.";
+			
+		// if everything is ok, try to upload file
+		} else {
+			if (move_uploaded_file($_FILES["fileToUpload"]["tmp_name"], $target_file)) {
+				echo "The file ". basename( $_FILES["fileToUpload"]["name"]). " has been uploaded.";
+			} else {
+				echo "Sorry, there was an error uploading your file.";
+			}
+		}
+		
+		
+	}
 	else
 	{
 		print("<!doctype html><html><body>\n");
@@ -151,3 +227,5 @@ function checkFilename(field)
 		print("</body></html>\n");
 	}
 ?>
+
+

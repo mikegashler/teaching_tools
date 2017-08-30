@@ -1,8 +1,8 @@
 <?php
-	$file_path = "/var/www/html/paradigms/";
-	$web_path = "http://uaf56986.ddns.uark.edu/paradigms/";
-	$return_url = "http://uaf46365.ddns.uark.edu/paradigms/";
-	$lock_date = "2016-12-08";
+	$file_path = "/var/www/html/advai/";
+	$web_path = "http://uaf56986.ddns.uark.edu/advai/";
+	$return_url = "http://csce.uark.edu/~mgashler/advai/";
+	$lock_date = "2017-07-26";
 ?>
 
 <html>
@@ -10,7 +10,7 @@
 	<style>
 		body {
 			background-image:url('black_fade.png');
-			background-color:#d0d0b0;
+			background-color:#60a0a0;
 			background-repeat:repeat-x;
 		}
 		.code {
@@ -23,14 +23,19 @@
 
 <body>
 <br><br>
-<table align=center cellpadding=50 border=1 bgcolor=#e0e0c0 width=720><tr><td>
+<table align=center cellpadding=50 border=1 bgcolor=#f0f0f0 width=720><tr><td>
 
-<h1>Programming Paradigms Lectures</h1>
+<h1>Advanced Artificial Intelligence Lectures</h1>
 
 <?php
 	function annotation_comparer($a, $b)
 	{
-		if(intval($a->time) < intval($b->time))
+		$v = strcmp($a->video, $b->video);
+		if($v < 0)
+			return -1;
+		else if($v > 0)
+			return 1;
+		else if(intval($a->time) < intval($b->time))
 			return -1;
 		else if(intval($a->time) > intval($b->time))
 			return 1;
@@ -70,11 +75,11 @@
 			print("* is not allowed in the description.");
 		else
 		{
-			// Keep all the annotations except for any that match the new time stamp.
+			// Keep all the annotations except for any that match the new video and time stamp.
 			$new_annotations = array();
 			for($i = 0; $i < sizeof($annotations); $i++)
 			{
-				if($annotations[$i]->time !== $new_ann->time)
+				if($annotations[$i]->video !== $new_ann->video || $annotations[$i]->time !== $new_ann->time)
 					$new_annotations []= $annotations[$i];
 			}
 			$annotations = $new_annotations;
@@ -114,12 +119,22 @@
 		}
 	}
 
-	print("<table><tr><td><b><u>Low resolution</u></b></td><td><b><u>High resolution</u></b></td><td><b><u>Annotations</u></b></td></tr>\n");
+	print("<table>");
+	$prevYear = "";
 	for($i = 0; $i < sizeof($small_videos); $i++) // for each small video...
 	{
-		print("<tr>");
 		// Low resolution video
 		$display_name = substr($small_videos[$i], 5);
+		$year = substr($display_name, 0, 4);
+		if(strcmp($year, $prevYear) != 0)
+		{
+			print("<br><br><br><br><br><br><a id=\"" . $year . "\">");
+			print("<tr><td><h1>" . $year . "</h1></td></tr>\n");
+			print("<tr><td><b><u>Low resolution</u></b></td><td><b><u>High resolution</u></b></td><td><b><u>Annotations</u></b></td></tr>\n");
+			$prevYear = $year;
+		}
+		
+		print("<tr>");
 		print("<td valign=top><a href=\"" . $web_path . $small_videos[$i] . "\" target=\"_blank\">" . $display_name . "</a></td>");
 
 		// High resolution video
@@ -128,20 +143,20 @@
 			print("<td></td>");
 		else
 			print("<td valign=top><a href=\"" . $web_path . $big_videos[$high_res_index] . "\" target=\"_blank\">" . $display_name . "</a></td>");
-		print("<td>");
+		print("<td>\n");
 
 		// Table of annotations
 		
-		print("<table>");
+		print("<table>\n");
 		for($j = 0; $j < sizeof($annotations); $j++)
 		{
 			$ann = $annotations[$j];
 			if($ann->video === $display_name)
 			{
-				print("<tr><td>" . $ann->time . "</td><td>" . $ann->descr . "</td></tr>");
+				print("<tr><td>" . $ann->time . "</td><td>" . $ann->descr . "</td></tr>\n");
 			}
 		}
-		print("</table>");
+		print("</table>\n");
 
 		// Form to add new annotations
 		if(strcmp($display_name, $lock_date) > 0)
@@ -151,9 +166,9 @@
 			print("<input type=\"text\" name=\"time\" size=\"3\">");
 			print("<input type=\"text\" name=\"descr\" size=\"25\">");
 			print("<input type=\"submit\" value=\"Add\">");
-			print("</form></td>");
-			print("</tr>\n");
+			print("</form>");
 		}
+		print("</td>\n</tr>\n\n");
 	}
 	print("</table>\n");
 ?>
