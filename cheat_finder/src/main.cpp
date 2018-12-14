@@ -808,7 +808,7 @@ public:
 
 	static CodeNode* parseFile(vector<string>& toks, vector<size_t>& lines, size_t pos)
 	{
-		CodeNode* pNode = new CodeNode("file", lines[pos]);
+		CodeNode* pNode = new CodeNode("file", toks.size() > 0 ? lines[pos] : 0);
 		while(pos < toks.size())
 		{
 			if(toks[pos].compare(";") == 0)
@@ -821,10 +821,13 @@ public:
 
 	static CodeNode* parse(const char* szFilename)
 	{
+		// Extract all the tokens from the file
 		MyTokenizer tok(szFilename);
 		vector<string> toks;
 		vector<size_t> lines;
 		tok.tokenize(toks, lines);
+
+		// Parse the tokens
 		return CodeNode::parseFile(toks, lines, 0);
 	}
 
@@ -1140,12 +1143,21 @@ public:
 		// Check parameters
 		if(chdir(args.pop_string()) != 0)
 			throw Ex("Failed to chdir");
-		string subst = "";
+		string subst1 = "";
+		string subst2 = "";
 		if(args.size() > 0)
 		{
-			subst = args.pop_string();
-			cout << "Comparing all pairs where at least one folder contains the string \"" << subst << "\"\n";
+			subst1 = args.pop_string();
+			if(args.size() > 0)
+			{
+				subst2 = args.pop_string();
+				cout << "Comparing all pairs where the first folder contains the string \"" << subst1 << "\" and the second folder contains the string \"" << subst2 << "\"\n";
+			}
+			else
+				cout << "Comparing all pairs where the first folder contains the string \"" << subst1 << "\"\n";
 		}
+		else
+			cout << "Comparing all folder pairs\n";
 		
 		vector<string> folders;
 		GFile::folderList(folders, ".");
@@ -1165,11 +1177,13 @@ public:
 		GSimplePriorityQueue< pair<size_t, size_t> > pq;
 		for(size_t i = 0; i < m_submissions.size(); i++)
 		{
+			if(subst1.length() > 0 && m_submissions[i]->name.find(subst1) == string::npos)
+				continue;
 			for(size_t j = 0; j < m_submissions.size(); j++)
 			{
 				if(j == i)
 					continue;
-				if(subst.length() > 0 && m_submissions[i]->name.find(subst) == string::npos && m_submissions[j]->name.find(subst) == string::npos)
+				if(subst2.length() > 0 && m_submissions[j]->name.find(subst2) == string::npos)
 					continue;
 				double overlap = m_submissions[i]->compare(*m_submissions[j]);
 				//cout << to_str(overlap * 100.0) << "% of " << m_submissions[i]->name << " is in " << m_submissions[j]->name << "\n";
@@ -1210,12 +1224,13 @@ void doit(GArgReader& args)
 		cout << "  cheater [action]\n";
 		cout << "    where [action] is any of:\n";
 		cout << "\n";
-		cout << "      find [folder] <sub>\n";
+		cout << "      find [folder] <sub1> <sub2>\n";
 		cout << "        Compare the contents of each sub-folder in [folder]\n";
 		cout << "        and report those that are most similar.\n";
-		cout << "        If the optional parameter <sub> is specified,\n";
-		cout << "        only foldernames containing the substring <sub>\n";
-		cout << "        will be examined.\n";
+		cout << "        The optional parameter <sub1> specifies a substring\n";
+		cout << "        that must be found in the first folder name.\n";
+		cout << "        The optional parameter <sub2> specifies a substring\n";
+		cout << "        that must be found in the second folder name.\n";
 		cout << "\n";
 		cout << "      compare [folder1] [folder2]\n";
 		cout << "        Compute the portion of [folder1] contained in [folder2].\n";
