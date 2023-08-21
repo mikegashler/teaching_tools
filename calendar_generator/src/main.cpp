@@ -5,16 +5,23 @@
 
 #include <exception>
 #include <iostream>
-#include <GClasses/GApp.h>
-#include <GClasses/GError.h>
 #include <string>
 #include <fstream>
+#include <sstream>
 
-using namespace GClasses;
 using std::cerr;
 using std::cout;
 using std::string;
 using std::ofstream;
+
+template<typename T>
+std::string to_str(const T& n)
+{
+	std::ostringstream os;
+	os.precision(14);
+	os << n;
+	return os.str();
+}
 
 const char* g_months[] = {
 	"January",
