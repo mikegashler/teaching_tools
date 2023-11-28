@@ -21,8 +21,8 @@ def main() -> None:
         'ajax.html': banana_quest.make_ajax_page,
         'game.html': banana_quest.make_game_page,
         'redirect.html': banana_quest.make_redirect_page,
-        'pf2_proj1_receive.html': pf2.receive_pf2_proj1,
-        'pf2_proj1_send.html': pf2.send_pf2_proj1,
+        'pf2_proj1_receive.html': pf2.pf2_proj1_receive,
+        'pf2_proj1_send.html': pf2.pf2_proj1_send,
         'pf2_log_out.html': pf2.log_out,
     })
 

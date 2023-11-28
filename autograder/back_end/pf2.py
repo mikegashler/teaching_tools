@@ -1,10 +1,14 @@
 import zipfile
 import os
 from typing import Mapping, Any, List, Dict
-import sys
 from datetime import datetime
 from http_daemon import Session, log
 import json
+from datetime import datetime
+import shutil
+
+pf2_proj1_due_time = datetime(year=2023, month=11, day=28, hour=23, minute=59, second=59)
+change_me_hash = "ff854dee05ef262a4219cddcdfaff1f149203fd17d6f4db8454bf5f3d75470c3a4d0ee421257a27a5cb76358167fe6d4562d2e25c10ae7ad9c14492178df5551"
 
 accounts:Dict[str,Any]
 
@@ -18,6 +22,14 @@ def save_accounts() -> None:
     global accounts
     with open('pf2_accounts.json', 'w') as f:
         f.write(json.dumps(accounts, indent=2))
+
+def add_students(names:List[str]) -> None:
+    for name in names:
+        accounts[name] = {
+            'pw': change_me_hash,
+            'toks': 20,
+        }
+
 
 launch_script = '''#!/bin/bash
 set -e
@@ -94,7 +106,7 @@ def run_submission(start_folder:str, args:List[str]=[], input:str='') -> str:
 # Receives a submission. Unzips it. Checks for common problems.
 # Executes it, and returns the output as a string.
 # Throws a ValueError if anything is wrong with the submission.
-def receive_and_unpack_submission(params: Mapping[str, Any]) -> str:
+def receive_and_unpack_submission(params:Mapping[str, Any], course:str, project:str, student:str) -> str:
     # Make sure we received a zip file
     zipfilename = params['filename']
     _, extension = os.path.splitext(zipfilename)
@@ -102,14 +114,9 @@ def receive_and_unpack_submission(params: Mapping[str, Any]) -> str:
         raise ValueError(f'Expected a file with the extension ".zip". Got "{extension}".')
 
     # Make a folder for the submission
-    assert 'course' in params
-    assert 'project' in params
-    assert 'student' in params
-    course = params['course']
-    project = params['project']
-    student = params['student']
     t = datetime.now()
-    date_stamp = f'{t.year:04}-{t.month:02}-{t.day:02}_{t.hour:02}-{t.minute:02}-{t.second:02}-{t.microsecond:06}.js'
+    date_stamp = f'{t.year:04}-{t.month:02}-{t.day:02}_{t.hour:02}-{t.minute:02}-{t.second:02}-{t.microsecond:06}'
+    student = student.replace(' ', '_').replace(',', '_')
     basename = os.path.join(course, project, student, date_stamp)
     log(f'making dirs: {basename}')
     os.makedirs(basename)
@@ -117,7 +124,7 @@ def receive_and_unpack_submission(params: Mapping[str, Any]) -> str:
 
     # Unzip it
     log(f'moving {zipfilename} to {zipname}')
-    os.rename(zipfilename, zipname)
+    shutil.move(zipfilename, zipname)
     with zipfile.ZipFile(zipname, 'r') as zip_ref:
         zip_ref.extractall(basename)
 
@@ -167,6 +174,7 @@ def receive_and_unpack_submission(params: Mapping[str, Any]) -> str:
 def page_start(p:List[str], session:Session) -> None:
     p.append('<!DOCTYPE html>')
     p.append('<html><head>')
+    p.append('<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">')
     p.append('<style>')
     p.append('body,center {')
     p.append('  font-family: verdana, tahoma, geneva, sans-serif;')
@@ -180,6 +188,7 @@ def page_start(p:List[str], session:Session) -> None:
     p.append('  overflow-x:scroll;')
     p.append('}')
     p.append('</style>')
+    p.append('<script src="sha512.js"></script>')
     p.append('</head>')
     p.append('<body><table width="800px" align="center" style="background: #ffffff;"><tr><td>')
     p.append('<img src="banner.png"><br>')
@@ -200,31 +209,68 @@ def page_end(p:List[str]) -> None:
 def make_submission_error_page(text:str, session:Session) -> Mapping[str, Any]:
     p:List[str] = []
     page_start(p, session)
-    p.append('There is a problem with this submission: ')
+    p.append('There is a problem with this submission:<br>')
     p.append('<font color="red">')
     p.append(text)
-    p.append('</font>')
+    p.append('</font><br><br>')
     p.append('Please fix this issue and resubmit.')
     page_end(p)
     return {
         'content': ''.join(p),
     }
 
-def receive_pf2_proj1(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    #print(f'receive_pf2_proj1 was called with params={params}', file=sys.stderr)
+def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    due_time = pf2_proj1_due_time
 
+    # Make sure the user is logged in
     if not session.logged_in():
         return make_pf2_login_page(params, session)
-
     try:
-        start_folder = receive_and_unpack_submission(params)
+        account = accounts[session.name]
+    except:
+        return make_pf2_login_page(params, session, f'Unrecognized account name: {session.name}')
+
+    # Make sure the user has enough late tokens
+    submission_grace_seconds = 15 * 60
+    seconds_per_week = 7 * 24 * 60 * 60
+    now_time = datetime.now()
+    cost = max(0, (((now_time - due_time).total_seconds() - submission_grace_seconds) // seconds_per_week) + 1)
+    tokens = account["toks"]
+    if tokens < cost:
+        return make_submission_error_page('You do not have enough late tokens to submit this assignment now', session)
+
+    # Unpack the submission
+    try:
+        start_folder = receive_and_unpack_submission(params, 'pf2', 'proj1', session.name)
     except Exception as e:
         return make_submission_error_page(str(e), session)
 
+    # Run some tests
     try:
-        output = run_submission(start_folder, ['aaa', 'bbb', 'ccc'], 'Aloysius')
+        args = ['aaa', 'bbb', 'ccc']
+        input = 'Aloysius'
+        output = run_submission(start_folder, args, input)
     except Exception as e:
         return make_submission_error_page(str(e), session)
+    expected = '''Hello, what is your name?
+> Hi, Aloysius, the arguments you passed in were:
+arg 1 = aaa
+arg 2 = bbb
+arg 3 = ccc
+
+I will now count to ten (with zero-indexed values)
+i = 0
+i = 1
+i = 2
+i = 3
+i = 4
+i = 5
+i = 6
+i = 7
+i = 8
+i = 9
+Thanks for stopping by. Have a nice day!'''
+
 
     p:List[str] = []
     page_start(p, session)
@@ -237,7 +283,9 @@ def receive_pf2_proj1(params: Mapping[str, Any], session: Session) -> Mapping[st
         'content': ''.join(p),
     }
 
-def send_pf2_proj1(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+
+
+def pf2_send(params:Mapping[str, Any], session:Session, title:str, due_time:datetime, receive_page:str) -> Mapping[str, Any]:
     # Log in if credentials were provided
     if 'name' in params and 'password' in params:
         try:
@@ -245,7 +293,7 @@ def send_pf2_proj1(params: Mapping[str, Any], session: Session) -> Mapping[str, 
         except:
             return make_pf2_login_page(params, session, f'Unrecognized name: {params["name"]}')
         if account['pw'] != params['password']:
-            return make_pf2_login_page(params, session, f'Incorrect password')
+            return make_pf2_login_page(params, session, f'Incorrect password. (Please contact the instructor if you need to have your password reset.)')
         session.name = params['name']
 
     # Make sure we are logged in
@@ -262,15 +310,15 @@ def send_pf2_proj1(params: Mapping[str, Any], session: Session) -> Mapping[str, 
         save_accounts()
 
     # See if the password needs to be changed
-    if account['pw'] == 'change_me':
+    if account['pw'] == change_me_hash:
         p:List[str] = []
         page_start(p, session)
         if 'first' in params or 'second' in params:
             p.append('The passwords did not match. Please try again.<br><br>')
         p.append('You need to change your password. Please enter a new one (twice):')
-        p.append('<form method="post"')
-        p.append('    <br><input type="password" name="first">')
-        p.append('    <br><input type="password" name="second">')
+        p.append('<form method="post" onsubmit="hash_password(\'first\'); hash_password(\'second\');"')
+        p.append('    <br><input type="password" name="first" id="first">')
+        p.append('    <br><input type="password" name="second" id="second">')
         p.append('    <br><input type="submit">')
         p.append('</form>')
         page_end(p)
@@ -281,18 +329,30 @@ def send_pf2_proj1(params: Mapping[str, Any], session: Session) -> Mapping[str, 
     # Make the upload form
     p = []
     page_start(p, session)
-    p.append('Please upload your proj1.zip file:')
-    p.append('<form action="pf2_proj1_receive.html" method="post" enctype="multipart/form-data">')
-    p.append('    <input type="hidden" name="course" value="pf2">')
-    p.append('    <input type="hidden" name="project" value="proj1">')
-    p.append('    <input type="hidden" name="student" value="John_Doe">')
-    p.append('    <input type="file" name="filename">')
-    p.append('    <input type="submit">')
-    p.append('</form>')
+    p.append(f'<big>Submit <b>{title}</b></big><br>')
+    p.append(f'Due time: {due_time}<br>')
+    now_time = datetime.now()
+    p.append(f'Now time: {now_time}<br>')
+    tokens = account["toks"]
+    p.append(f'Your late token balance: {tokens}<br>')
+    cost = max(0, ((now_time - due_time).total_seconds()) // (7 * 24 * 60 * 60) + 1)
+    p.append(f'Cost if your submission is accepted now: {cost}<br>')
+    if cost > tokens:
+        p.append('Unfortunately, you do not have enough remaining late tokens to submit this assignment so late. (You should probably contact the instructor and beg for mercy.)')
+    else:
+        p.append('<br>')
+        p.append('Please upload your zip file:')
+        p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
+        p.append('    <input type="file" name="filename">')
+        p.append('    <input type="submit">')
+        p.append('</form>')
     page_end(p)
     return {
         'content': ''.join(p),
     }
+
+def pf2_proj1_send(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    return pf2_send(params, session, 'Project 1', pf2_proj1_due_time, 'pf2_proj1_receive.html')
 
 def make_pf2_login_page(params:Mapping[str, Any], session:Session, message:str='') -> Mapping[str, Any]:
     p:List[str] = []
@@ -300,17 +360,17 @@ def make_pf2_login_page(params:Mapping[str, Any], session:Session, message:str='
     if len(message) > 0:
         p.append(message)
         p.append('<br><br>')
-    p.append('<form action="pf2_proj1_send.html" method="post">')
+    p.append('<form action="pf2_proj1_send.html" method="post" onsubmit="hash_password(\'password\');">')
     p.append('<table><tr><td>')
     p.append('Name:')
     p.append('</td><td>')
     p.append('<select name="name">')
-    for name in accounts:
+    for name in sorted(accounts):
         p.append(f'<option name="{name}" value="{name}">{name}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>Password:</td><td>')
-    p.append('<input type="password" name="password">')
+    p.append('<input type="password" name="password" id="password">')
     p.append('</td></tr>')
     p.append('<tr><td></td><td><input type="submit" value="Log in">')
     p.append('</td></tr></table>')
@@ -323,3 +383,13 @@ def make_pf2_login_page(params:Mapping[str, Any], session:Session, message:str='
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     session.name = ''
     return make_pf2_login_page(params, session)
+
+if __name__ == "__main__":
+    student_list = '''Albertson, Alice
+Barker, Bob
+Coville, Cory'''
+    names = student_list.split('\n')
+    print(names)
+    load_accounts()
+    add_students(names)
+    save_accounts()

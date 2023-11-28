@@ -1,14 +1,14 @@
 {
-  "Alice Adleman": {
-    "pw": "alice"
+  "Albertson, Alice": {
+    "pw": "d2c5383b44a4991f32cab496ffde281aff5dc64f1f3656314d415d02ea8e98afe16e95778faad9d0bcf7df52ddd3e57e9df871f43044b53ff27f1626dba6ea1e",
+    "toks": 20
   },
-  "Bob Barker": {
-    "pw": "change_me"
+  "Barker, Barty": {
+    "pw": "ff854dee05ef262a4219cddcdfaff1f149203fd17d6f4db8454bf5f3d75470c3a4d0ee421257a27a5cb76358167fe6d4562d2e25c10ae7ad9c14492178df5551",
+    "toks": 20
   },
-  "Cindy Crawford": {
-    "pw": "change_me"
-  },
-  "Dave Dawson": {
-    "pw": "change_me"
+  "Coville, Cory": {
+    "pw": "b0eac0dbe13dda5ecc606c40c8591863f1c76bc8d0b606064d013496d50c0e50592299b29f354eb78760a353ca769356c5b8f176be58745f1e751c71d5a5d53a",
+    "toks": 20
   }
 }
