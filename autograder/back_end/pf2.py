@@ -7,7 +7,11 @@ import json
 from datetime import datetime
 import shutil
 
-pf2_proj1_due_time = datetime(year=2023, month=11, day=28, hour=23, minute=59, second=59)
+proj1_desc: Dict[str,Any] = {
+    "title": "Project 1",
+    "due_time": datetime(year=2023, month=11, day=28, hour=23, minute=59, second=59),
+}
+
 change_me_hash = "ff854dee05ef262a4219cddcdfaff1f149203fd17d6f4db8454bf5f3d75470c3a4d0ee421257a27a5cb76358167fe6d4562d2e25c10ae7ad9c14492178df5551"
 
 accounts:Dict[str,Any]
@@ -220,7 +224,10 @@ def make_submission_error_page(text:str, session:Session) -> Mapping[str, Any]:
     }
 
 def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    due_time = pf2_proj1_due_time
+    desc = proj1_desc
+    title:str = str(desc['title'])
+    title_clean = title.replace(' ', '_')
+    due_time:datetime = desc['due_time']
 
     # Make sure the user is logged in
     if not session.logged_in():
@@ -234,14 +241,14 @@ def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
     submission_grace_seconds = 15 * 60
     seconds_per_week = 7 * 24 * 60 * 60
     now_time = datetime.now()
-    cost = max(0, (((now_time - due_time).total_seconds() - submission_grace_seconds) // seconds_per_week) + 1)
+    cost = max(0, int((((now_time - due_time).total_seconds() - submission_grace_seconds) // seconds_per_week) + 1))
     tokens = account["toks"]
     if tokens < cost:
         return make_submission_error_page('You do not have enough late tokens to submit this assignment now', session)
 
     # Unpack the submission
     try:
-        start_folder = receive_and_unpack_submission(params, 'pf2', 'proj1', session.name)
+        start_folder = receive_and_unpack_submission(params, 'pf2', title_clean, session.name)
     except Exception as e:
         return make_submission_error_page(str(e), session)
 
@@ -269,15 +276,27 @@ i = 6
 i = 7
 i = 8
 i = 9
-Thanks for stopping by. Have a nice day!'''
+Thanks for stopping by. Have a nice day!
 
+'''
 
     p:List[str] = []
     page_start(p, session)
-    p.append('Here is the output:')
-    p.append('<pre class="code">')
-    p.append(output)
-    p.append('</pre>')
+    if output == expected:
+        log(f'Passed: Project 1: {session.name}')
+        account["toks"] -= cost
+        account[title_clean] = 100
+        save_accounts()
+        p.append('<font color="green">Your submission passed all tests. Your assignment is complete. You will receive full credit.</font>')
+    else:
+        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
+        if len(args) > 0:
+            p.append(f'Args passed in: <pre class="code">{" ".join(args)}</pre><br><br>')
+        if len(input) > 0:
+            p.append(f'Input fed in: <pre class="code">{input}</pre><br><br>')
+        p.append(f'Output: <pre class="code">{output}</pre><br><br>')
+        p.append(f'Expected output: <pre class="code">{expected}</pre><br><br>')
+        p.append('Please fix the issue and resubmit.')
     page_end(p)
     return {
         'content': ''.join(p),
@@ -285,7 +304,11 @@ Thanks for stopping by. Have a nice day!'''
 
 
 
-def pf2_send(params:Mapping[str, Any], session:Session, title:str, due_time:datetime, receive_page:str) -> Mapping[str, Any]:
+def pf2_send(params:Mapping[str, Any], session:Session, desc:Mapping[str,Any], receive_page:str) -> Mapping[str, Any]:
+    title = desc['title']
+    title_clean = title.replace(' ', '_')
+    due_time = desc['due_time']
+
     # Log in if credentials were provided
     if 'name' in params and 'password' in params:
         try:
@@ -303,6 +326,7 @@ def pf2_send(params:Mapping[str, Any], session:Session, title:str, due_time:date
         account = accounts[session.name]
     except:
         return make_pf2_login_page(params, session, f'Unrecognized account name: {session.name}')
+    log(f'account={account}')
 
     # Change password
     if 'first' in params and 'second' in params and params['first'] == params['second']:
@@ -326,6 +350,15 @@ def pf2_send(params:Mapping[str, Any], session:Session, title:str, due_time:date
             'content': ''.join(p),
         }
 
+    if title_clean in account and account[title_clean] >= 100:
+        p = []
+        page_start(p, session)
+        p.append('You have already received full credit for this assignment. There is no need to submit it again.')
+        page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+
     # Make the upload form
     p = []
     page_start(p, session)
@@ -335,7 +368,7 @@ def pf2_send(params:Mapping[str, Any], session:Session, title:str, due_time:date
     p.append(f'Now time: {now_time}<br>')
     tokens = account["toks"]
     p.append(f'Your late token balance: {tokens}<br>')
-    cost = max(0, ((now_time - due_time).total_seconds()) // (7 * 24 * 60 * 60) + 1)
+    cost = max(0, int(((now_time - due_time).total_seconds()) // (7 * 24 * 60 * 60) + 1))
     p.append(f'Cost if your submission is accepted now: {cost}<br>')
     if cost > tokens:
         p.append('Unfortunately, you do not have enough remaining late tokens to submit this assignment so late. (You should probably contact the instructor and beg for mercy.)')
@@ -352,9 +385,10 @@ def pf2_send(params:Mapping[str, Any], session:Session, title:str, due_time:date
     }
 
 def pf2_proj1_send(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    return pf2_send(params, session, 'Project 1', pf2_proj1_due_time, 'pf2_proj1_receive.html')
+    return pf2_send(params, session, proj1_desc, 'pf2_proj1_receive.html')
 
 def make_pf2_login_page(params:Mapping[str, Any], session:Session, message:str='') -> Mapping[str, Any]:
+    selected_name = params['name'] if 'name' in params else ''
     p:List[str] = []
     page_start(p, session)
     if len(message) > 0:
@@ -366,7 +400,7 @@ def make_pf2_login_page(params:Mapping[str, Any], session:Session, message:str='
     p.append('</td><td>')
     p.append('<select name="name">')
     for name in sorted(accounts):
-        p.append(f'<option name="{name}" value="{name}">{name}</option>')
+        p.append(f'<option name="{name}" value="{name}"{" selected" if name == selected_name else ""}>{name}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>Password:</td><td>')
