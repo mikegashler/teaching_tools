@@ -15,7 +15,7 @@ def main() -> None:
     mt.start()
 
     # Serve pages
-    port = 8985
+    port = 80
     # delay_open_url(f'http://localhost:{port}/game.html', .1)
     serve_pages(port, {
         'ajax.html': banana_quest.make_ajax_page,

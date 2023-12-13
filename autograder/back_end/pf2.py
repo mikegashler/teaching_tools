@@ -31,7 +31,7 @@ def add_students(names:List[str]) -> None:
     for name in names:
         accounts[name] = {
             'pw': change_me_hash,
-            'toks': 20,
+            'toks': 7,
         }
 
 
@@ -39,6 +39,7 @@ launch_script = '''#!/bin/bash
 set -e
 
 # Make sure the files are owned by sandbox
+sudo chown sandbox:sandbox .
 sudo chown -R sandbox:sandbox *
 
 # Make sure the script has unix line endings, and is executable
@@ -239,12 +240,9 @@ def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
 
     # Make sure the user has enough late tokens
     submission_grace_seconds = 15 * 60
-    seconds_per_week = 7 * 24 * 60 * 60
+    seconds_per_day = 24 * 60 * 60
     now_time = datetime.now()
-    cost = max(0, int((((now_time - due_time).total_seconds() - submission_grace_seconds) // seconds_per_week) + 1))
-    tokens = account["toks"]
-    if tokens < cost:
-        return make_submission_error_page('You do not have enough late tokens to submit this assignment now', session)
+    cost = max(0, int((((now_time - due_time).total_seconds() - submission_grace_seconds) // seconds_per_day) + 1))
 
     # Unpack the submission
     try:
@@ -255,27 +253,26 @@ def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
     # Run some tests
     try:
         args = ['aaa', 'bbb', 'ccc']
-        input = 'Aloysius'
+        input = '''Aloysius
+8'''
         output = run_submission(start_folder, args, input)
     except Exception as e:
         return make_submission_error_page(str(e), session)
-    expected = '''Hello, what is your name?
-> Hi, Aloysius, the arguments you passed in were:
+    expected = '''The arguments passed in were:
 arg 1 = aaa
 arg 2 = bbb
 arg 3 = ccc
-
-I will now count to ten (with zero-indexed values)
-i = 0
-i = 1
-i = 2
-i = 3
-i = 4
-i = 5
-i = 6
-i = 7
-i = 8
-i = 9
+Hello, what is your name?
+> And what is your favorite number?
+> Ok, Aloysius, I will count to 8 (with zero-indexed values):
+0 ah-ah-ah!
+1 ah-ah-ah!
+2 ah-ah-ah!
+3 ah-ah-ah!
+4 ah-ah-ah!
+5 ah-ah-ah!
+6 ah-ah-ah!
+7 ah-ah-ah!
 Thanks for stopping by. Have a nice day!
 
 '''
@@ -283,9 +280,12 @@ Thanks for stopping by. Have a nice day!
     p:List[str] = []
     page_start(p, session)
     if output == expected:
-        log(f'Passed: Project 1: {session.name}')
-        account["toks"] -= cost
-        account[title_clean] = 100
+        covered_cost = min(cost, account["toks"])
+        account["toks"] -= covered_cost
+        cost -= covered_cost
+        score = 100 - 3 * cost
+        log(f'Passed: title={title_clean}, student={session.name}, score={score}')
+        account[title_clean] = score
         save_accounts()
         p.append('<font color="green">Your submission passed all tests. Your assignment is complete. You will receive full credit.</font>')
     else:
@@ -350,7 +350,7 @@ def pf2_send(params:Mapping[str, Any], session:Session, desc:Mapping[str,Any], r
             'content': ''.join(p),
         }
 
-    if title_clean in account and account[title_clean] >= 100:
+    if title_clean in account and account[title_clean] > 0:
         p = []
         page_start(p, session)
         p.append('You have already received full credit for this assignment. There is no need to submit it again.')
@@ -368,17 +368,12 @@ def pf2_send(params:Mapping[str, Any], session:Session, desc:Mapping[str,Any], r
     p.append(f'Now time: {now_time}<br>')
     tokens = account["toks"]
     p.append(f'Your late token balance: {tokens}<br>')
-    cost = max(0, int(((now_time - due_time).total_seconds()) // (7 * 24 * 60 * 60) + 1))
-    p.append(f'Cost if your submission is accepted now: {cost}<br>')
-    if cost > tokens:
-        p.append('Unfortunately, you do not have enough remaining late tokens to submit this assignment so late. (You should probably contact the instructor and beg for mercy.)')
-    else:
-        p.append('<br>')
-        p.append('Please upload your zip file:')
-        p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
-        p.append('    <input type="file" name="filename">')
-        p.append('    <input type="submit">')
-        p.append('</form>')
+    p.append('<br>')
+    p.append('Please upload your zip file:')
+    p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
+    p.append('    <input type="file" name="filename">')
+    p.append('    <input type="submit">')
+    p.append('</form>')
     page_end(p)
     return {
         'content': ''.join(p),

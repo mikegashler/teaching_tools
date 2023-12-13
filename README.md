@@ -1,6 +1,10 @@
 # Teaching tools
 A collection of light weight tools that I developed to facilitate my teaching.
 
+# autograder
+An autograder I made for accepting code submissions.
+(Written in Python.)
+
 # calendar_generator
 Generates some HTML calendars for use in making a class schedule.
 (Written in C++.)

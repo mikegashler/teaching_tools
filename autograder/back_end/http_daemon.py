@@ -215,7 +215,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 
         # Parse cookies
         raw_cookie_text = self.headers.get('Cookie')
-        cookie = SimpleCookie(raw_cookie_text)
+        cookie:SimpleCookie[Any] = SimpleCookie(raw_cookie_text)
         if filename == 'ping.html':
             self.send_file(filename, 'pong', ping_sid) # special case for ping page
             return
@@ -268,13 +268,13 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         # The XHR specification forbids clients from setting 'Cookie',
         # so we work around that with 'Brownie' instead.
         brownie_str = self.headers.get('Brownie') or ''
-        brownie = SimpleCookie(brownie_str)
+        brownie:SimpleCookie[Any] = SimpleCookie(brownie_str)
         if 'sid' in brownie:
             session_id = brownie['sid'].value
         else:
             cookie_str = self.headers.get('Cookie')
             brownie_str = f'{cookie_str} (from cookie header?)'
-            cookie = SimpleCookie(cookie_str)
+            cookie:SimpleCookie[Any] = SimpleCookie(cookie_str)
             if 'sid' in cookie:
                 session_id = cookie['sid'].value
             else:
