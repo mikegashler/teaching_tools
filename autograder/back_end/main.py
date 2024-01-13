@@ -10,7 +10,7 @@ def main() -> None:
     banana_quest.load_map()
 
     # Start the monitoring thread
-    mt = threading.Thread(target=monitor_thread, args=(200,))
+    mt = threading.Thread(target=monitor_thread, args=(30,))
     mt.start()
 
     # Serve pages
