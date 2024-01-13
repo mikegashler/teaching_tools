@@ -313,7 +313,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(bytes('{"status":"error","message":f"{filename} not found."}', 'utf8'))
+            self.wfile.write(bytes(f'{{"status":"error","message":"{filename} not found."}}', 'utf8'))
 
     # Returns the filename specified for the file
     def parse_multipart_form(self, max_size:int=16_000_000) -> Mapping[str, Any]:

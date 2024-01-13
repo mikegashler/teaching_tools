@@ -51,10 +51,10 @@ size_t daysInMonth(size_t month, size_t year)
 
 void doit()
 {
-	size_t year = 2012;
-	size_t day = 0; // Sunday
+	size_t year = 2024;
+	size_t day = 1; // Monday
 
-	while(year < 2042)
+	while(year < 2027)
 	{
 		string sFilename = to_str(year);
 		sFilename += ".html";
