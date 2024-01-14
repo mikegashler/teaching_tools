@@ -23,6 +23,8 @@ def main() -> None:
         'log_out.html': autograder.make_log_out_page,
         'pf2_proj1_receive.html': pf2.pf2_proj1_receive,
         'pf2_proj1_submit.html': pf2.pf2_proj1_submit,
+        'pf2_proj2_receive.html': pf2.pf2_proj2_receive,
+        'pf2_proj2_submit.html': pf2.pf2_proj2_submit,
     })
 
 if __name__ == "__main__":

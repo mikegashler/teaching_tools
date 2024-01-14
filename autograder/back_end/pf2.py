@@ -33,7 +33,7 @@ def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
     start_folder = submission['folder']
     title_clean = submission['title_clean']
 
-    # Run some tests
+    # Test 1: See if it produces the exactly correct output
     try:
         args = ['aaa', 'bbb', 'ccc']
         input = '''Aloysius
@@ -59,20 +59,9 @@ Hello, what is your name?
 Thanks for stopping by. Have a nice day!
 
 '''
-
     p:List[str] = []
     autograder.page_start(p, session)
-    if output == expected:
-        covered_days = min(days_late, account["toks"])
-        account["toks"] -= covered_days
-        days_late -= covered_days
-        score = max(30, 100 - 3 * days_late)
-        log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-        account[title_clean] = score
-        autograder.save_accounts(course_desc['accounts'], accounts)
-        p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
-        p.append('(However, the grade is not final until the grader looks at it.)</font>')
-    else:
+    if output != expected:
         p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
         if len(args) > 0:
             p.append(f'Args passed in: <pre class="code">{" ".join(args)}</pre><br><br>')
@@ -81,10 +70,165 @@ Thanks for stopping by. Have a nice day!
         p.append(f'Output: <pre class="code">{output}</pre><br><br>')
         p.append(f'Expected output: <pre class="code">{expected}</pre><br><br>')
         p.append('Please fix the issue and resubmit.')
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+
+    # Accept the submission
+    covered_days = min(days_late, account["toks"])
+    account["toks"] -= covered_days
+    days_late -= covered_days
+    score = max(30, 100 - 3 * days_late)
+    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+    account[title_clean] = score
+    autograder.save_accounts(course_desc['accounts'], accounts)
+    p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
+    p.append('(However, the grade is not final until the grader looks at it.)</font>')
     autograder.page_end(p)
     return {
         'content': ''.join(p),
     }
+
+def pf2_proj2_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc['projects']['proj2'], accounts)
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+    account = submission['account']
+    days_late = submission['days_late']
+    start_folder = submission['folder']
+    title_clean = submission['title_clean']
+
+    p:List[str] = []
+    autograder.page_start(p, session)
+
+    # Test 1: not debug mode, short list
+    try:
+        args:List[str] = []
+        input = '''alpha
+beta
+charlie
+delta
+epsilon
+'''
+        output = autograder.run_submission(start_folder, args, input)
+    except Exception as e:
+        return autograder.make_submission_error_page(str(e), session)
+    if output.find('debug mode') >= 0:
+        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
+        p.append('I did not pass in the "debug" flag, but it still ran in debug mode!')        
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+    if output.find('delta') < 0:
+        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
+        p.append('The words in the lexicon were not displayed when not in debug mode.')        
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+
+    # Test 2: debug mode, long list
+    try:
+        args = ['debug']
+        input = '''alpha
+beta
+charlie
+delta
+epsilon
+frank
+george
+harry
+indigo
+jackson
+kappa
+llama
+money
+nubile
+oscar
+petrify
+quirky
+rascal
+sorry
+tricky
+'''
+        output = autograder.run_submission(start_folder, args, input)
+    except Exception as e:
+        return autograder.make_submission_error_page(str(e), session)
+    if output.find('debug mode') < 0:
+        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
+        p.append('When I passed in the "debug" flag, it did not print that it was running in debug mode. (See step 2.j)')
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+    if output.find('delta') < 0:
+        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
+        p.append('The words in the lexicon were not displayed when in debug mode.')        
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+    if output.find('rascal') >= 0:
+        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
+        p.append('I was able to enter more than 8 words into the lexicon. (See step 5.a)')        
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+
+    # Test 3: superfluous argument
+    try:
+        args = ['debug', 'salmon']
+        input = '''alpha
+beta
+charlie
+delta
+epsilon
+frank
+george
+harry
+indigo
+jackson
+kappa
+llama
+money
+nubile
+oscar
+petrify
+quirky
+rascal
+sorry
+tricky
+'''
+        output = autograder.run_submission(start_folder, args, input)
+    except Exception as e:
+        return autograder.make_submission_error_page(str(e), session)
+    if output.find('delta') >= 0:
+        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
+        p.append('When I passed in a superfluous argument, it did not crash. (See step 2.j)')
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+
+    # Accept the submission
+    covered_days = min(days_late, account["toks"])
+    account["toks"] -= covered_days
+    days_late -= covered_days
+    score = max(30, 100 - 3 * days_late)
+    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+    account[title_clean] = score
+    autograder.save_accounts(course_desc['accounts'], accounts)
+    p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
+    p.append('(However, the grade is not final until the grader looks at it.)</font>')
+    autograder.page_end(p)
+    return {
+        'content': ''.join(p),
+    }
+
 
 
 def pf2_proj1_submit(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
@@ -99,6 +243,17 @@ def pf2_proj1_submit(params: Mapping[str, Any], session: Session) -> Mapping[str
         'pf2_proj1_receive.html',
     )
 
+def pf2_proj2_submit(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    return autograder.make_submission_page(
+        params,
+        session,
+        course_desc['course'],
+        course_desc['projects']['proj2'],
+        accounts,
+        course_desc['accounts'],
+        'pf2_proj2_submit.html',
+        'pf2_proj2_receive.html',
+    )
 
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     return autograder.make_log_out_page(params, session)
