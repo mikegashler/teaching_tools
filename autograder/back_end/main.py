@@ -1,8 +1,8 @@
-import os
 from http_daemon import serve_pages, monitor_thread
 import threading
 import banana_quest
 import pf2
+import dsa
 import autograder
 
 def main() -> None:
@@ -25,6 +25,8 @@ def main() -> None:
         'pf2_proj1_submit.html': pf2.pf2_proj1_submit,
         'pf2_proj2_receive.html': pf2.pf2_proj2_receive,
         'pf2_proj2_submit.html': pf2.pf2_proj2_submit,
+        'dsa_proj1_receive.html': dsa.dsa_proj1_receive,
+        'dsa_proj1_submit.html': dsa.dsa_proj1_submit,
     })
 
 if __name__ == "__main__":
