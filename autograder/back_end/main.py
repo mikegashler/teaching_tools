@@ -4,6 +4,20 @@ import banana_quest
 import pf2
 import dsa
 import autograder
+import json
+import os
+
+config = {
+    'port': 80
+}
+
+if os.path.isfile('config.json'):
+    print(f'loading config.json')
+    with open('config.json', 'r') as f:
+        s = f.read()
+    config = json.loads(s)
+else:
+    print(f'no config.json file in {os.getcwd()}')
 
 def main() -> None:
     # Get set up
@@ -14,9 +28,8 @@ def main() -> None:
     mt.start()
 
     # Serve pages
-    port = 80
     # delay_open_url(f'http://localhost:{port}/game.html', .1)
-    serve_pages(port, {
+    serve_pages(config['port'], {
         'ajax.html': banana_quest.make_ajax_page,
         'game.html': banana_quest.make_game_page,
         'redirect.html': banana_quest.make_redirect_page,

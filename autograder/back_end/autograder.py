@@ -5,6 +5,7 @@ import zipfile
 import os
 from datetime import datetime
 from http_daemon import Session, log
+import traceback
 
 os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
 
@@ -28,7 +29,7 @@ def add_students(names:List[str], accounts:Dict[str,Any], toks:int=7) -> None:
             'toks': toks,
         }
 
-launch_script = '''#!/bin/bash
+launch_script_with_sandbox = '''#!/bin/bash
 set -e
 
 # Make sure the files are owned by sandbox
@@ -82,8 +83,58 @@ if [ -d "obj" ]; then
 fi
 '''
 
+launch_script_without_sandbox = '''#!/bin/bash
+set -e
+
+# Make sure the script has unix line endings, and is executable
+dos2unix -q ./run.bash
+chmod 755 ./run.bash
+
+# Launch the "run.bash" script
+./run.bash $* < _input.txt &
+
+# Start a time-out timer
+CHILD_PID=$!
+TIME_LIMIT=30
+for (( i = 0; i < $TIME_LIMIT; i++ )); do
+	sleep 1
+
+	#proc=$(ps -ef | awk -v pid=$CHILD_PID '$2==pid{print}{}')
+	#if [[ -z "$proc" ]]; then
+	#	break
+	#fi
+
+	if ! ps -p $CHILD_PID > /dev/null; then
+		break
+	fi
+done
+if [ $i -lt $TIME_LIMIT ]; then
+	echo ""
+else
+	echo "!!! Time limit exceeded! Killing the unfinished process !!!"
+	sudo kill -HUP $CHILD_PID
+    sleep 1
+    sudo kill -15 $CHILD_PID
+    sleep 1
+	sudo kill -9 $CHILD_PID
+fi
+
+# Clean up some generated files
+cd ..
+if [ -d "obj" ]; then
+	find . -name "*.class"  -exec -exec rm {} \;
+	find . -name "*.o"  -exec -exec rm {} \;
+	find . -name "*.obj"  -exec -exec rm {} \;
+	find . -name "*.ncb"  -exec -exec rm {} \;
+	find . -name "*.suo"  -exec -exec rm {} \;
+	find . -name "*.pch"  -exec -exec rm {} \;
+	find . -name "*.lib"  -exec -exec rm {} \;
+	find . -name "*.a"  -exec -exec rm {} \;
+fi
+'''
+
 # Executes a submission with the specified args and input, and returns its output
-def run_submission(start_folder:str, args:List[str]=[], input:str='') -> str:
+def run_submission(start_folder:str, args:List[str]=[], input:str='', sandbox:bool=True) -> str:
     # Write the input to a file
     with open(os.path.join(start_folder, '_input.txt'), 'w') as f:
         f.write(input)
@@ -91,7 +142,7 @@ def run_submission(start_folder:str, args:List[str]=[], input:str='') -> str:
 
     # Put a launch script in the same folder as run.bash
     with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
-        f.write(launch_script)
+        f.write(launch_script_with_sandbox if sandbox else launch_script_without_sandbox)
 
     # Execute the launch script
     os.system(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)} > _output.txt')
@@ -267,16 +318,17 @@ def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
 def make_submission_page(
     params:Mapping[str, Any],
     session:Session,
-    course_name:str,
-    desc:Mapping[str,Any],
+    course_desc:Mapping[str,Any],
+    project_name:str,
     accounts:Dict[str,Any],
-    accounts_filename:str,
     submit_page:str,
     receive_page:str,
 ) -> Mapping[str, Any]:
+    desc = course_desc['projects'][project_name]
     title = desc['title']
     title_clean = title.replace(' ', '_')
     due_time = desc['due_time']
+    course_name = course_desc['course_long'],
 
     # Log in if credentials were provided
     if 'name' in params and 'password' in params:
@@ -300,7 +352,7 @@ def make_submission_page(
     # Change password
     if 'first' in params and 'second' in params and params['first'] == params['second']:
         account['pw'] = params['first']
-        save_accounts(accounts_filename, accounts)
+        save_accounts(str(course_desc['accounts']), accounts)
 
     # See if the password needs to be changed
     if account['pw'] == change_me_hash:
@@ -363,14 +415,18 @@ def make_log_out_page(params: Mapping[str, Any], session: Session) -> Mapping[st
 def unpack_submission(
         params: Mapping[str, Any],
         session: Session,
-        desc:Mapping[str,Any],
+        course_desc:Mapping[str,Any],
+        project_name:str,
         accounts:Dict[str,Any],
+        submit_page:str,
 ) -> Mapping[str,Any]:
+    desc = course_desc['projects'][project_name]
+
     # Make sure the user is logged in
     if not session.logged_in():
         return {
             'succeeded': False,
-            'page': make_login_page(params, session, 'pf2_proj1_submit.html', accounts),
+            'page': make_login_page(params, session, submit_page, accounts),
         }
 
     # Find the account
@@ -384,7 +440,7 @@ def unpack_submission(
             'page': make_login_page(
                 params,
                 session,
-                'pf2_proj1_submit.html',
+                submit_page,
                 accounts,
                 f'Unrecognized account name: {session.name}',
             )
@@ -398,8 +454,9 @@ def unpack_submission(
 
     # Unpack the submission
     try:
-        folder = receive_and_unpack_submission(params, 'pf2', title_clean, session.name)
+        folder = receive_and_unpack_submission(params, course_desc['course_short'], title_clean, session.name)
     except Exception as e:
+        print(traceback.format_exc())
         return {
             'succeeded': False,
             'page': make_submission_error_page(str(e), session),

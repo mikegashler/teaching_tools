@@ -3,9 +3,11 @@ from datetime import datetime
 from http_daemon import Session, log
 from datetime import datetime
 import autograder
+import sys
 
 course_desc:Mapping[str,Any] = {
-    'course': 'Data Structures & Algorithms',
+    'course_long': 'Data Structures & Algorithms',
+    'course_short': 'dsa',
     'accounts': 'dsa_accounts.json',
     'projects': {
         'proj1': {
@@ -25,7 +27,7 @@ except:
 
 def dsa_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc['projects']['proj1'], accounts)
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'dsa_proj1_submit.html')
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
     account = submission['account']
@@ -39,7 +41,7 @@ def dsa_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
         input = '''1
 /var/www/autograder/test_data/simple.csv
 '''
-        output = autograder.run_submission(start_folder, args, input)
+        output = autograder.run_submission(start_folder, args, input, False)
     except Exception as e:
         return autograder.make_submission_error_page(str(e), session)
     p:List[str] = []
@@ -71,13 +73,14 @@ def dsa_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
 
 
 def dsa_proj1_submit(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    print('calling make_submission_page')
+    sys.stdout.flush()
     return autograder.make_submission_page(
         params,
         session,
-        course_desc['course'],
-        course_desc['projects']['proj1'],
+        course_desc,
+        'proj1',
         accounts,
-        course_desc['accounts'],
         'dsa_proj1_submit.html',
         'dsa_proj1_receive.html',
     )

@@ -436,9 +436,9 @@ def serve_pages(the_port:int, pages:Mapping[str, Callable[[Mapping[str,Any], Ses
 
     global simpleWebServerPages
     simpleWebServerPages = pages
+    log(f'Serving on port {port}')
     httpd = MyServer(('', port), MyRequestHandler)
 
-    log(f'Serving on port {port}')
     load_state()
     with tempfile.TemporaryDirectory() as td:
         temp_folder = td

@@ -5,7 +5,8 @@ from datetime import datetime
 import autograder
 
 course_desc:Mapping[str,Any] = {
-    'course': 'Programming Foundations II',
+    'course_long': 'Programming Foundations II',
+    'course_short': 'pf2',
     'accounts': 'pf2_accounts.json',
     'projects': {
         'proj1': {
@@ -29,7 +30,7 @@ except:
 
 def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc['projects']['proj1'], accounts)
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'pf2_proj1_submit.html')
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
     account = submission['account']
@@ -96,7 +97,7 @@ Thanks for stopping by. Have a nice day!
 
 def pf2_proj2_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc['projects']['proj2'], accounts)
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'pf2_proj1_submit.html')
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
     account = submission['account']
@@ -239,10 +240,9 @@ def pf2_proj1_submit(params: Mapping[str, Any], session: Session) -> Mapping[str
     return autograder.make_submission_page(
         params,
         session,
-        course_desc['course'],
-        course_desc['projects']['proj1'],
+        course_desc,
+        'proj1',
         accounts,
-        course_desc['accounts'],
         'pf2_proj1_submit.html',
         'pf2_proj1_receive.html',
     )
@@ -251,10 +251,9 @@ def pf2_proj2_submit(params: Mapping[str, Any], session: Session) -> Mapping[str
     return autograder.make_submission_page(
         params,
         session,
-        course_desc['course'],
-        course_desc['projects']['proj2'],
+        course_desc,
+        'proj2',
         accounts,
-        course_desc['accounts'],
         'pf2_proj2_submit.html',
         'pf2_proj2_receive.html',
     )
