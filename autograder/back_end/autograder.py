@@ -134,15 +134,33 @@ def receive_and_unpack_submission(params:Mapping[str, Any], course:str, project:
         '.git', 
         '__MACOSX', 
         '.settings',
+        'backup',
+        'data',
+        'images',
+        'pics',
     ]
     forbidden_extensions = [
-        '.o', 
-        '.obj', 
-        '.class', 
+        '', # usually compiled C++ apps
+        '.arff',
+        '.bat', # windows batch files
+        '.class', # compiled java
+        '.csv',
+        '.dat',
         '.exe', 
-        '.ncb', 
-        '.suo', 
+        '.htm',
+        '.html',
+        '.json',
+        '.ncb',
         '.pcb',
+        '.pickle',
+        '.pkl',
+        '.o', # C++ object files
+        '.obj', # C++ object files
+        '.pdb',
+        '.ps1', # powershell scripts
+        '.suo', 
+        '.tmp',
+        '.txt',
     ]
     file_count = 0
     start_folder = ''
@@ -154,7 +172,7 @@ def receive_and_unpack_submission(params:Mapping[str, Any], course:str, project:
             _, ext = os.path.splitext(filename)
             for forbidden_extension in forbidden_extensions:
                 if ext == forbidden_extension:
-                    raise ValueError(f'Your zip file contains a forbidden file: "{filename}".')
+                    raise ValueError(f'Your zip contains an unnecessary file: "{filename}". Please submit only your code and build script.')
         file_count += len(files)
         if 'run.bash' in files:
             start_folder = path

@@ -33,54 +33,36 @@ def dsa_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
     start_folder = submission['folder']
     title_clean = submission['title_clean']
 
-    # Run some tests
+    # Test 1: See if it prints the contents of a csv file when loaded
     try:
-        args = ['aaa', 'bbb', 'ccc']
-        input = '''Aloysius
-8'''
+        args:List[str] = []
+        input = '''1
+/var/www/autograder/test_data/simple.csv
+'''
         output = autograder.run_submission(start_folder, args, input)
     except Exception as e:
         return autograder.make_submission_error_page(str(e), session)
-    expected = '''The arguments passed in were:
-arg 1 = aaa
-arg 2 = bbb
-arg 3 = ccc
-Hello, what is your name?
-> And what is your favorite number?
-> Ok, Aloysius, I will count to 8 (with zero-indexed values):
-0 ah-ah-ah!
-1 ah-ah-ah!
-2 ah-ah-ah!
-3 ah-ah-ah!
-4 ah-ah-ah!
-5 ah-ah-ah!
-6 ah-ah-ah!
-7 ah-ah-ah!
-Thanks for stopping by. Have a nice day!
-
-'''
-
     p:List[str] = []
     autograder.page_start(p, session)
-    if output == expected:
-        covered_days = min(days_late, account["toks"])
-        account["toks"] -= covered_days
-        days_late -= covered_days
-        score = max(30, 100 - 3 * days_late)
-        log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-        account[title_clean] = score
-        autograder.save_accounts(course_desc['accounts'], accounts)
-        p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
-        p.append('(However, the grade is not final until the grader looks at it.)</font>')
-    else:
+    if output.find('carrot') < 0:
         p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        if len(args) > 0:
-            p.append(f'Args passed in: <pre class="code">{" ".join(args)}</pre><br><br>')
-        if len(input) > 0:
-            p.append(f'Input fed in: <pre class="code">{input}</pre><br><br>')
-        p.append(f'Output: <pre class="code">{output}</pre><br><br>')
-        p.append(f'Expected output: <pre class="code">{expected}</pre><br><br>')
+        p.append('I chose option 1 to load a CSV file, but the contents of that CSV file did not appear in the output. Did you print the CSV contents as describe din step 8.l?<br><br>')
         p.append('Please fix the issue and resubmit.')
+        autograder.page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+
+    # Accept the submission
+    covered_days = min(days_late, account["toks"])
+    account["toks"] -= covered_days
+    days_late -= covered_days
+    score = max(30, 100 - 3 * days_late)
+    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+    account[title_clean] = score
+    autograder.save_accounts(course_desc['accounts'], accounts)
+    p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
+    p.append('(However, the grade is not final until the grader looks at it.)</font>')
     autograder.page_end(p)
     return {
         'content': ''.join(p),
