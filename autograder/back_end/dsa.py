@@ -46,7 +46,8 @@ def dsa_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
     autograder.page_start(p, session)
     if output.find('carrot') < 0:
         p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('I chose option 1 to load a CSV file, but the contents of that CSV file did not appear in the output. Did you print the CSV contents as describe din step 8.l?<br><br>')
+        p.append('I chose option 1 to load a CSV file, but the contents of that CSV file did not appear in the output. Did you print the CSV contents as described in step 8.l?<br><br>')
+        p.append(f'Your output: <pre class="code">{output}</pre><br><br>')
         p.append('Please fix the issue and resubmit.')
         autograder.page_end(p)
         return {
