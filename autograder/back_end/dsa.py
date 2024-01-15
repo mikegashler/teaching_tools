@@ -10,7 +10,7 @@ course_desc:Mapping[str,Any] = {
     'projects': {
         'proj1': {
             "title": "Project 1",
-            "due_time": datetime(year=2023, month=11, day=28, hour=23, minute=59, second=59),
+            "due_time": datetime(year=2024, month=1, day=22, hour=23, minute=59, second=59),
         },
     }
 }
