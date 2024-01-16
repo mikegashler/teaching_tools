@@ -3,7 +3,6 @@ from datetime import datetime
 from http_daemon import Session, log
 from datetime import datetime
 import autograder
-import sys
 
 course_desc:Mapping[str,Any] = {
     'course_long': 'Data Structures & Algorithms',
@@ -23,40 +22,11 @@ except:
     print('*** FAILED TO LOAD ACCOUNTS! Starting an empty file!!!')
     accounts = {}
 
-
-
-def dsa_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'dsa_proj1_submit.html')
-    if not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
+def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+    # Give the student credit
     account = submission['account']
     days_late = submission['days_late']
-    start_folder = submission['folder']
     title_clean = submission['title_clean']
-
-    # Test 1: See if it prints the contents of a csv file when loaded
-    try:
-        args:List[str] = []
-        input = '''1
-/var/www/autograder/test_data/simple.csv
-'''
-        output = autograder.run_submission(start_folder, args, input, False)
-    except Exception as e:
-        return autograder.make_submission_error_page(str(e), session)
-    p:List[str] = []
-    autograder.page_start(p, session)
-    if output.find('carrot') < 0:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('I chose option 1 to load a CSV file, but the contents of that CSV file did not appear in the output. Did you print the CSV contents as described in step 8.l?<br><br>')
-        p.append(f'Your output: <pre class="code">{output}</pre><br><br>')
-        p.append('Please fix the issue and resubmit.')
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
-
-    # Accept the submission
     covered_days = min(days_late, account["toks"])
     account["toks"] -= covered_days
     days_late -= covered_days
@@ -64,26 +34,297 @@ def dsa_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[st
     log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
     account[title_clean] = score
     autograder.save_accounts(course_desc['accounts'], accounts)
-    p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
-    p.append('(However, the grade is not final until the grader looks at it.)</font>')
-    autograder.page_end(p)
-    return {
-        'content': ''.join(p),
-    }
 
+    # Make an acceptance page
+    return autograder.accept_submission(session, submission)
 
-def dsa_proj1_submit(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    print('calling make_submission_page')
-    sys.stdout.flush()
-    return autograder.make_submission_page(
-        params,
-        session,
-        course_desc,
-        'proj1',
-        accounts,
-        'dsa_proj1_submit.html',
-        'dsa_proj1_receive.html',
-    )
+def dsa_proj1_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'dsa_proj1_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+/var/www/autograder/test_data/simple.csv
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('carrot') < 0:
+        return autograder.reject_submission(session,
+            'I chose option 1 to load a CSV file, but the contents of that CSV file did not appear in the output. Did you print the CSV contents as described in step 8.l?',
+            args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj2_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'dsa_proj2_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj3_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'dsa_proj3_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj4_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'dsa_proj4_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj5_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'dsa_proj5_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj6_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'dsa_proj6_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj7_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'dsa_proj7_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj8_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'dsa_proj8_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj9_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'dsa_proj9_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj10_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'dsa_proj10_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj11_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'dsa_proj11_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def dsa_proj12_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj12', accounts, 'dsa_proj12_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it prints the contents of a csv file when loaded
+    try:
+        args:List[str] = []
+        input = '''1
+xxx
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Could not find xxx',
+        args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
 
 
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:

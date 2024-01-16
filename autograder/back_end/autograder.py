@@ -1,4 +1,4 @@
-from typing import Mapping, Any, List, Dict, cast
+from typing import Mapping, Any, List, Dict, cast, Callable
 import json
 import shutil
 import zipfile
@@ -134,8 +134,9 @@ fi
 '''
 
 # Executes a submission with the specified args and input, and returns its output
-def run_submission(start_folder:str, args:List[str]=[], input:str='', sandbox:bool=True) -> str:
+def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='', sandbox:bool=True) -> str:
     # Write the input to a file
+    start_folder = submission['folder']
     with open(os.path.join(start_folder, '_input.txt'), 'w') as f:
         f.write(input)
         f.write('\n\n\n\n\n\n\n\n') # Add a few newlines to flush any superfluous input prompts
@@ -273,15 +274,31 @@ def page_end(p:List[str]) -> None:
     p.append('</body>')
     p.append('</html>')
 
-# Makes a page describing the submission problem
-def make_submission_error_page(text:str, session:Session) -> Mapping[str, Any]:
+# Makes a page describing why the submission was rejected
+def reject_submission(session:Session, message:str, args:List[str]=[], input:str='', output:str='', post_message:str='') -> Mapping[str, Any]:
     p:List[str] = []
     page_start(p, session)
-    p.append('There is a problem with this submission:<br>')
-    p.append('<font color="red">')
-    p.append(text)
-    p.append('</font><br><br>')
-    p.append('Please fix this issue and resubmit.')
+    p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
+    p.append(f'{message}<br><br>')
+    if len(args) > 0:
+        p.append(f'Args passed in: <pre class="code">{" ".join(args)}</pre><br><br>')
+    if len(input) > 0:
+        p.append(f'Input fed in: <pre class="code">{input}</pre><br><br>')
+    p.append(f'Output: <pre class="code">{output}</pre><br><br>')
+    if len(post_message) > 0:
+        p.append(post_message)
+    p.append('Please fix the issue and resubmit.')
+    page_end(p)
+    return {
+        'content': ''.join(p),
+    }
+
+def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+    p:List[str] = []
+    page_start(p, session)
+    p.append('<font color="green">Your submission passed all tests! Your assignment is complete. ')
+    p.append('You have tentatively been given full credit. ')
+    p.append('(However, the grade is not final because the grader may still examine it.)</font>')
     page_end(p)
     return {
         'content': ''.join(p),
@@ -459,7 +476,7 @@ def unpack_submission(
         print(traceback.format_exc())
         return {
             'succeeded': False,
-            'page': make_submission_error_page(str(e), session),
+            'page': reject_submission(session, str(e)),
         }
     
     return {
@@ -469,3 +486,27 @@ def unpack_submission(
         'folder': folder,
         'title_clean': title_clean,
     }
+
+# Consumes course_descs
+# Adds page makers for the submit pages to the page_makers dictionary
+def generate_submit_pages(
+        page_makers:Dict[str,Callable[[Mapping[str,Any],Session],Mapping[str,Any]]],
+        course_desc:Mapping[str,Any],
+        accounts:Dict[str,Any],
+) -> None:
+    for proj in course_desc['projects']:
+        submit_page_name = f'{course_desc["course_short"]}_{proj}_submit.html'
+        receive_page_name = f'{course_desc["course_short"]}_{proj}_receive.html'
+        def page_maker_factory(proj_short_name:str, submit_page:str, receive_page:str) -> Callable[[Mapping[str,Any],Session],Mapping[str,Any]]: # So make_submit_page can bind to the unique parameters of this function
+            def make_submit_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+                return make_submission_page(
+                    params,
+                    session,
+                    course_desc,
+                    proj_short_name,
+                    accounts,
+                    submit_page,
+                    receive_page,
+                )
+            return make_submit_page
+        page_makers[submit_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)

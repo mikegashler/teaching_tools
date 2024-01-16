@@ -28,24 +28,36 @@ except:
 
 
 
-def pf2_proj1_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+    # Give the student credit
+    account = submission['account']
+    days_late = submission['days_late']
+    title_clean = submission['title_clean']
+    covered_days = min(days_late, account["toks"])
+    account["toks"] -= covered_days
+    days_late -= covered_days
+    score = max(30, 100 - 3 * days_late)
+    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+    account[title_clean] = score
+    autograder.save_accounts(course_desc['accounts'], accounts)
+
+    # Make an acceptance page
+    return autograder.accept_submission(session, submission)
+
+def pf2_proj1_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'pf2_proj1_submit.html')
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
-    account = submission['account']
-    days_late = submission['days_late']
-    start_folder = submission['folder']
-    title_clean = submission['title_clean']
 
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['aaa', 'bbb', 'ccc']
         input = '''Aloysius
 8'''
-        output = autograder.run_submission(start_folder, args, input)
+        output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.make_submission_error_page(str(e), session)
+        return autograder.reject_submission(session, str(e))
     expected = '''The arguments passed in were:
 arg 1 = aaa
 arg 2 = bbb
@@ -67,46 +79,20 @@ Thanks for stopping by. Have a nice day!
     p:List[str] = []
     autograder.page_start(p, session)
     if output != expected:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        if len(args) > 0:
-            p.append(f'Args passed in: <pre class="code">{" ".join(args)}</pre><br><br>')
-        if len(input) > 0:
-            p.append(f'Input fed in: <pre class="code">{input}</pre><br><br>')
-        p.append(f'Output: <pre class="code">{output}</pre><br><br>')
-        p.append(f'Expected output: <pre class="code">{expected}</pre><br><br>')
-        p.append('Please fix the issue and resubmit.')
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
+        return autograder.reject_submission(session,
+            'The output does not match the expected output.',
+            args, input, output,
+            f'Expected output: <pre class="code">{expected}</pre><br><br>',
+        )
 
     # Accept the submission
-    covered_days = min(days_late, account["toks"])
-    account["toks"] -= covered_days
-    days_late -= covered_days
-    score = max(30, 100 - 3 * days_late)
-    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-    account[title_clean] = score
-    autograder.save_accounts(course_desc['accounts'], accounts)
-    p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
-    p.append('(However, the grade is not final until the grader looks at it.)</font>')
-    autograder.page_end(p)
-    return {
-        'content': ''.join(p),
-    }
+    return accept_submission(session, submission)
 
-def pf2_proj2_receive(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+def pf2_proj2_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'pf2_proj1_submit.html')
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'pf2_proj2_submit.html')
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
-    account = submission['account']
-    days_late = submission['days_late']
-    start_folder = submission['folder']
-    title_clean = submission['title_clean']
-
-    p:List[str] = []
-    autograder.page_start(p, session)
 
     # Test 1: not debug mode, short list
     try:
@@ -117,23 +103,19 @@ charlie
 delta
 epsilon
 '''
-        output = autograder.run_submission(start_folder, args, input)
+        output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.make_submission_error_page(str(e), session)
+        return autograder.reject_submission(session, str(e))
     if output.find('debug mode') >= 0:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('I did not pass in the "debug" flag, but it still ran in debug mode!')        
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
+        return autograder.reject_submission(session,
+            'I did not pass in the "debug" flag, but it still ran in debug mode!',
+            args, input, output,
+        )
     if output.find('delta') < 0:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('The words in the lexicon were not displayed when not in debug mode.')        
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
+        return autograder.reject_submission(session,
+            'The words in the lexicon were not displayed when not in debug mode.',
+            args, input, output,
+        )
 
     # Test 2: debug mode, long list
     try:
@@ -159,30 +141,24 @@ rascal
 sorry
 tricky
 '''
-        output = autograder.run_submission(start_folder, args, input)
+        output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.make_submission_error_page(str(e), session)
+        return autograder.reject_submission(session, str(e))
     if output.find('debug mode') < 0:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('When I passed in the "debug" flag, it did not print that it was running in debug mode. (See step 2.j)')
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
+        return autograder.reject_submission(session,
+            'When I passed in the "debug" flag, it did not print that it was running in debug mode. (See step 2.j)',
+            args, input, output,
+        )
     if output.find('delta') < 0:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('The words in the lexicon were not displayed when in debug mode.')        
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
+        return autograder.reject_submission(session,
+            'The words in the lexicon were not displayed when in debug mode.',
+            args, input, output,
+        )
     if output.find('rascal') >= 0:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('I was able to enter more than 8 words into the lexicon. (See step 5.a)')        
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
+        return autograder.reject_submission(session,
+            'I was able to enter more than 8 words into the lexicon. (See step 5.a)',
+            args, input, output,
+        )
 
     # Test 3: superfluous argument
     try:
@@ -208,55 +184,427 @@ rascal
 sorry
 tricky
 '''
-        output = autograder.run_submission(start_folder, args, input)
+        output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.make_submission_error_page(str(e), session)
+        return autograder.reject_submission(session, str(e))
     if output.find('delta') >= 0:
-        p.append('<font color="red">Sorry, there was an issue.</font><br><br>')
-        p.append('When I passed in a superfluous argument, it did not crash. (See step 2.j)')
-        autograder.page_end(p)
-        return {
-            'content': ''.join(p),
-        }
+        return autograder.reject_submission(session,
+            'When I passed in a superfluous argument, it did not crash. (See step 2.j)',
+            args, input, output,
+        )
 
     # Accept the submission
-    covered_days = min(days_late, account["toks"])
-    account["toks"] -= covered_days
-    days_late -= covered_days
-    score = max(30, 100 - 3 * days_late)
-    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-    account[title_clean] = score
-    autograder.save_accounts(course_desc['accounts'], accounts)
-    p.append('<font color="green">Your submission passed all tests! Your assignment is complete. You have tentatively been given full credit.')
-    p.append('(However, the grade is not final until the grader looks at it.)</font>')
-    autograder.page_end(p)
-    return {
-        'content': ''.join(p),
-    }
+    return accept_submission(session, submission)
 
+def pf2_proj3_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'pf2_proj3_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
 
+    # Test 1: Make sure the name was changed and it prints words entered so far
+    try:
+        args:List[str] = []
+        input = '''1
+alpha
+beta
+gamma'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('Aloysius') >= 0:
+        return autograder.reject_submission(session,
+            'You were supposed to change the name. See step 2.b.',
+            args, input, output,
+        )
+    if output.find('beta') < 0:
+        return autograder.reject_submission(session,
+            'When the "quiet" flag is not used, you are supposed to print the words that have been entered so far.',
+            args, input, output,
+        )
 
-def pf2_proj1_submit(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    return autograder.make_submission_page(
-        params,
-        session,
-        course_desc,
-        'proj1',
-        accounts,
-        'pf2_proj1_submit.html',
-        'pf2_proj1_receive.html',
-    )
+    # Test 2: Make sure the quiet flag works
+    try:
+        args = ['quiet']
+        input = '''1
+alpha
+beta
+gamma'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('beta') >= 0:
+        return autograder.reject_submission(session,
+            'When the "quiet" flag is used, you are not supposed to print the words that have been entered so far.',
+            args, input, output,
+        )
 
-def pf2_proj2_submit(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    return autograder.make_submission_page(
-        params,
-        session,
-        course_desc,
-        'proj2',
-        accounts,
-        'pf2_proj2_submit.html',
-        'pf2_proj2_receive.html',
-    )
+    # Test 3: Make sure it can handle a lot of words and the tear-down works
+    try:
+        args = ['quiet']
+        input = '''1
+alligator
+babboon
+cat
+dog
+elephant
+frog
+giraffe
+human
+iguana
+jackal
+kangaroo
+llama
+monkey
+narwhal
+ostrich
+pig
+'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    narwhal_spot = output.find('narwhal')
+    elephant_spot = output.find('elephant')
+    if narwhal_spot < 0 or elephant_spot < 0:
+        return autograder.reject_submission(session,
+            'Some of the animals I pushed on the stack disappeared!',
+            args, input, output,
+        )
+    if elephant_spot < narwhal_spot:
+        return autograder.reject_submission(session,
+            'The list was not correctly reversed.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj4_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'pf2_proj4_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''3
+#########
+#   #   #
+#   #   #
+#   #   #
+#########
+
+5
+2
+2
+/
+100
+
+4
+
+'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('#///#   #') < 0:
+        return autograder.reject_submission(session,
+            'Flood fill did not work correctly. It should have filled the left-side box with slashes, but left the right-side box empty.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj5_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'pf2_proj5_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''3
+ijkl
+mnop
+qrst
+uvwx
+
+1
+in
+ink
+inkpot
+inkpots
+inro
+ins
+jin
+jink
+jins
+jo
+jot
+jots
+knop
+knops
+knosp
+knot
+knots
+kop
+kops
+kor
+kors
+kos
+lo
+lop
+lops
+lorn
+lost
+lot
+lots
+mi
+mink
+minor
+minors
+nim
+no
+nor
+norm
+nos
+not
+on
+ons
+op
+ops
+opt
+opts
+or
+ors
+os
+plonk
+plot
+plots
+pol
+pons
+post
+pot
+pots
+rot
+rots
+salad
+salmon
+six
+snot
+so
+sol
+son
+sop
+sorn
+sot
+spot
+stop
+storm
+taco
+to
+ton
+tons
+top
+tops
+tor
+torn
+tors
+urn
+urns
+wrist
+
+6
+'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    for word in ['in', 'ink', 'inkpots', 'inro', 'jink',
+                 'knops', 'knots', 'lost', 'minors',
+                 'plonk', 'storm', 'urns']:
+        if output.find(word) < 0:
+            return autograder.reject_submission(session,
+                f'Failed to find the word "{word}".',
+                args, input, output,
+            )
+    for word in ['salad', 'salmon', 'taco', 'wrist', 'six']:
+        if output.find(word) >= 0:
+            return autograder.reject_submission(session,
+                f'Found the invalid word "{word}".',
+                args, input, output,
+            )
+    if output.find('porn') >= 0:
+        return autograder.reject_submission(session,
+            f'Found the word "porn", which was not in the lexicon!',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj6_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'pf2_proj6_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''Aloysius
+8'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Did not find xxx.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj7_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'pf2_proj7_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''Aloysius
+8'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Did not find xxx.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj8_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'pf2_proj8_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''Aloysius
+8'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Did not find xxx.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj9_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'pf2_proj9_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''Aloysius
+8'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Did not find xxx.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj10_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'pf2_proj10_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''Aloysius
+8'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Did not find xxx.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj11_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'pf2_proj11_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''Aloysius
+8'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Did not find xxx.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
+def pf2_proj12_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+    # Unpack the submission
+    submission = autograder.unpack_submission(params, session, course_desc, 'proj12', accounts, 'pf2_proj12_submit.html')
+    if not submission['succeeded']:
+        return cast(Mapping[str,Any], submission['page'])
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''Aloysius
+8'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('xxx') < 0:
+        return autograder.reject_submission(session,
+            'Did not find xxx.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(session, submission)
+
 
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     return autograder.make_log_out_page(params, session)
