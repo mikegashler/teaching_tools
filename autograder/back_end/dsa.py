@@ -4,41 +4,7 @@ from http_daemon import Session, log
 from datetime import datetime
 import autograder
 
-course_desc:Mapping[str,Any] = {
-    'course_long': 'Data Structures & Algorithms',
-    'course_short': 'dsa',
-    'accounts': 'dsa_accounts.json',
-    'projects': {
-        'proj1': {
-            "title": "Project 1",
-            "due_time": datetime(year=2024, month=1, day=22, hour=23, minute=59, second=59),
-        },
-    }
-}
-
-try:
-    accounts:Dict[str,Any] = autograder.load_accounts(course_desc['accounts'])
-except:
-    print('*** FAILED TO LOAD ACCOUNTS! Starting an empty file!!!')
-    accounts = {}
-
-def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
-    # Give the student credit
-    account = submission['account']
-    days_late = submission['days_late']
-    title_clean = submission['title_clean']
-    covered_days = min(days_late, account["toks"])
-    account["toks"] -= covered_days
-    days_late -= covered_days
-    score = max(30, 100 - 3 * days_late)
-    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-    account[title_clean] = score
-    autograder.save_accounts(course_desc['accounts'], accounts)
-
-    # Make an acceptance page
-    return autograder.accept_submission(session, submission)
-
-def dsa_proj1_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'dsa_proj1_submit.html')
     if not submission['succeeded']:
@@ -62,55 +28,114 @@ def dsa_proj1_receive(params:Mapping[str, Any], session:Session) -> Mapping[str,
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj2_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'dsa_proj2_submit.html')
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: See if it prints the contents of a csv file when loaded
+    # Test 1: See if it prints the stats correctly
     try:
         args:List[str] = []
         input = '''1
-xxx
+/var/www/autograder/test_data/stats.csv
+2
+
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
-    if output.find('xxx') < 0:
+    if output.find('9') < 0:
         return autograder.reject_submission(session,
-            'Could not find xxx',
+            'I directed your program to load a dataset with 9 rows (not including the column names) and then print stats, but I could not find "9" anywhere in the output.',
+        args, input, output
+        )
+    if output.find('3') < 0:
+        return autograder.reject_submission(session,
+            'I directed your program to load a dataset with 3 columns and then print stats, but I could not find "3" anywhere in the output.',
+        args, input, output
+        )
+    if output.find('4') < 0:
+        return autograder.reject_submission(session,
+            'I directed your program to load a dataset with 4 unique values in one of the columns, but I could not find "4" anywhere in the output.',
+        args, input, output
+        )
+    if output.find('5') < 0:
+        return autograder.reject_submission(session,
+            'I directed your program to load a dataset with 5 unique values in one of the columns, but I could not find "5" anywhere in the output.',
+        args, input, output
+        )
+    if output.find('6') < 0:
+        return autograder.reject_submission(session,
+            'The most common value in one of the columns was "6", but I could not find "6" anywhere in the output.',
+        args, input, output
+        )
+    if output.find('7') < 0:
+        return autograder.reject_submission(session,
+            'There were 7 unique values in one of the columns, but I could not find "7" anywhere in the output.',
+        args, input, output
+        )
+    if output.find('apple') < 0:
+        return autograder.reject_submission(session,
+            'The most common value in one of the columns was "apple", but I could not find "apple" anywhere in the output of your program.',
+        args, input, output
+        )
+    if output.find('red') < 0:
+        return autograder.reject_submission(session,
+            'The most common value in one of the columns was "red", but I could not find "red" anywhere in the output of your program.',
+        args, input, output
+        )
+    if output.find('yellow') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like your program still prints all the values in the dataset. It should not do that. See step 1.c.',
+        args, input, output
+        )
+    if output.find('pumpkin') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like your program still prints all the values in the dataset. It should not do that. See step 1.c.',
         args, input, output
         )
 
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj3_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'dsa_proj3_submit.html')
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: See if it prints the contents of a csv file when loaded
+    # Test 1: See if it prints the stats correctly
     try:
         args:List[str] = []
         input = '''1
-xxx
+/var/www/autograder/test_data/simple.csv
+2
+
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
-    if output.find('xxx') < 0:
+    if output.find('Color') < 0:
         return autograder.reject_submission(session,
-            'Could not find xxx',
+            'I loaded a dataset with a column named "Color", and I printed stats, but the word "Color" did not occur in your output. Did you print all the column names?',
+        args, input, output
+        )
+    if output.find('9') < 0:
+        return autograder.reject_submission(session,
+            'The max value in one of the columns was 9.0, but I did not find "9" in your output.',
+        args, input, output
+        )
+    if output.find('5.714') < 0:
+        return autograder.reject_submission(session,
+            'The mean value in one of the columns was 5.71428, but I did not find this value in your output.',
         args, input, output
         )
 
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj4_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'dsa_proj4_submit.html')
     if not submission['succeeded']:
@@ -134,7 +159,7 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj5_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'dsa_proj5_submit.html')
     if not submission['succeeded']:
@@ -158,7 +183,7 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj6_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'dsa_proj6_submit.html')
     if not submission['succeeded']:
@@ -182,7 +207,7 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj7_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'dsa_proj7_submit.html')
     if not submission['succeeded']:
@@ -206,7 +231,7 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj8_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'dsa_proj8_submit.html')
     if not submission['succeeded']:
@@ -230,7 +255,7 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj9_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'dsa_proj9_submit.html')
     if not submission['succeeded']:
@@ -254,7 +279,7 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj10_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'dsa_proj10_submit.html')
     if not submission['succeeded']:
@@ -278,7 +303,7 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj11_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'dsa_proj11_submit.html')
     if not submission['succeeded']:
@@ -302,29 +327,90 @@ xxx
     # Accept the submission
     return accept_submission(session, submission)
 
-def dsa_proj12_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj12', accounts, 'dsa_proj12_submit.html')
-    if not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
+course_desc:Mapping[str,Any] = {
+    'course_long': 'Data Structures & Algorithms',
+    'course_short': 'dsa',
+    'accounts': 'dsa_accounts.json',
+    'projects': {
+        'proj1': {
+            'title': 'Project 1',
+            'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj1,
+        },
+        'proj2': {
+            'title': 'Project 2',
+            'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj2,
+        },
+        'proj3': {
+            'title': 'Project 3',
+            'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj3,
+        },
+        'proj4': {
+            'title': 'Project 4',
+            'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj4,
+        },
+        'proj5': {
+            'title': 'Project 5',
+            'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj5,
+        },
+        'proj6': {
+            'title': 'Project 6',
+            'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj6,
+        },
+        'proj7': {
+            'title': 'Project 7',
+            'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj7,
+        },
+        'proj8': {
+            'title': 'Project 8',
+            'due_time': datetime(year=2024, month=4, day=8, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj8,
+        },
+        'proj9': {
+            'title': 'Project 9',
+            'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj9,
+        },
+        'proj10': {
+            'title': 'Project 10',
+            'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj10,
+        },
+        'proj11': {
+            'title': 'Project 11',
+            'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj11,
+        },
+    },
+}
 
-    # Test 1: See if it prints the contents of a csv file when loaded
-    try:
-        args:List[str] = []
-        input = '''1
-xxx
-'''
-        output = autograder.run_submission(submission, args, input, False)
-    except Exception as e:
-        return autograder.reject_submission(session, str(e))
-    if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
-            'Could not find xxx',
-        args, input, output
-        )
+try:
+    accounts:Dict[str,Any] = autograder.load_accounts(course_desc['accounts'])
+except:
+    print('*** FAILED TO LOAD DSA ACCOUNTS! Starting an empty file!!!')
+    accounts = {}
 
-    # Accept the submission
-    return accept_submission(session, submission)
+def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+    # Give the student credit
+    account = submission['account']
+    days_late = submission['days_late']
+    title_clean = submission['title_clean']
+    covered_days = min(days_late, account["toks"])
+    account["toks"] -= covered_days
+    days_late -= covered_days
+    score = max(30, 100 - 3 * days_late)
+    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+    account[title_clean] = score
+    autograder.save_accounts(course_desc['accounts'], accounts)
+
+    # Make an acceptance page
+    return autograder.accept_submission(session, submission, days_late, covered_days, score)
 
 
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:

@@ -293,12 +293,22 @@ def reject_submission(session:Session, message:str, args:List[str]=[], input:str
         'content': ''.join(p),
     }
 
-def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+def accept_submission(
+        session:Session, 
+        submission:Mapping[str,Any], 
+        days_late:int, 
+        covered_days:int, 
+        score:int
+) -> Mapping[str,Any]:
     p:List[str] = []
     page_start(p, session)
     p.append('<font color="green">Your submission passed all tests! Your assignment is complete. ')
-    p.append('You have tentatively been given full credit. ')
-    p.append('(However, the grade is not final because the grader may still examine it.)</font>')
+    p.append(f'Your tentative score is {score}. ')
+    if days_late > 0:
+        p.append(f'({days_late} days late, {covered_days} of which were excused.) ')
+    p.append('<br><br>(Some assignments have parts that need to be checked manually. ')
+    p.append('Also, some checks will be made to ensure that submissions were not just designed to fool the autograder. ')
+    p.append('So this score may still be adjusted by the grader.)</font>')
     page_end(p)
     return {
         'content': ''.join(p),
@@ -489,7 +499,7 @@ def unpack_submission(
 
 # Consumes course_descs
 # Adds page makers for the submit pages to the page_makers dictionary
-def generate_submit_pages(
+def generate_submit_and_receive_pages(
         page_makers:Dict[str,Callable[[Mapping[str,Any],Session],Mapping[str,Any]]],
         course_desc:Mapping[str,Any],
         accounts:Dict[str,Any],
@@ -510,3 +520,4 @@ def generate_submit_pages(
                 )
             return make_submit_page
         page_makers[submit_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)
+        page_makers[receive_page_name] = course_desc['projects'][proj]['evaluator']

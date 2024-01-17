@@ -4,47 +4,7 @@ from http_daemon import Session, log
 from datetime import datetime
 import autograder
 
-course_desc:Mapping[str,Any] = {
-    'course_long': 'Programming Foundations II',
-    'course_short': 'pf2',
-    'accounts': 'pf2_accounts.json',
-    'projects': {
-        'proj1': {
-            "title": "Project 1",
-            "due_time": datetime(year=2024, month=1, day=22, hour=23, minute=59, second=59),
-        },
-        'proj2': {
-            "title": "Project 2",
-            "due_time": datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
-        },
-    }
-}
-
-try:
-    accounts:Dict[str,Any] = autograder.load_accounts(course_desc['accounts'])
-except:
-    print('*** FAILED TO LOAD ACCOUNTS! Starting an empty file!!!')
-    accounts = {}
-
-
-
-def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
-    # Give the student credit
-    account = submission['account']
-    days_late = submission['days_late']
-    title_clean = submission['title_clean']
-    covered_days = min(days_late, account["toks"])
-    account["toks"] -= covered_days
-    days_late -= covered_days
-    score = max(30, 100 - 3 * days_late)
-    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-    account[title_clean] = score
-    autograder.save_accounts(course_desc['accounts'], accounts)
-
-    # Make an acceptance page
-    return autograder.accept_submission(session, submission)
-
-def pf2_proj1_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'pf2_proj1_submit.html')
     if not submission['succeeded']:
@@ -88,7 +48,7 @@ Thanks for stopping by. Have a nice day!
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj2_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'pf2_proj2_submit.html')
     if not submission['succeeded']:
@@ -196,7 +156,7 @@ tricky
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj3_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'pf2_proj3_submit.html')
     if not submission['succeeded']:
@@ -279,7 +239,7 @@ pig
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj4_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'pf2_proj4_submit.html')
     if not submission['succeeded']:
@@ -316,7 +276,7 @@ def pf2_proj4_receive(params:Mapping[str, Any], session:Session) -> Mapping[str,
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj5_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'pf2_proj5_submit.html')
     if not submission['succeeded']:
@@ -444,7 +404,7 @@ wrist
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj6_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'pf2_proj6_submit.html')
     if not submission['succeeded']:
@@ -467,7 +427,7 @@ def pf2_proj6_receive(params:Mapping[str, Any], session:Session) -> Mapping[str,
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj7_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'pf2_proj7_submit.html')
     if not submission['succeeded']:
@@ -490,7 +450,7 @@ def pf2_proj7_receive(params:Mapping[str, Any], session:Session) -> Mapping[str,
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj8_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'pf2_proj8_submit.html')
     if not submission['succeeded']:
@@ -513,7 +473,7 @@ def pf2_proj8_receive(params:Mapping[str, Any], session:Session) -> Mapping[str,
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj9_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'pf2_proj9_submit.html')
     if not submission['succeeded']:
@@ -536,7 +496,7 @@ def pf2_proj9_receive(params:Mapping[str, Any], session:Session) -> Mapping[str,
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj10_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'pf2_proj10_submit.html')
     if not submission['succeeded']:
@@ -559,7 +519,7 @@ def pf2_proj10_receive(params:Mapping[str, Any], session:Session) -> Mapping[str
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj11_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
+def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'pf2_proj11_submit.html')
     if not submission['succeeded']:
@@ -582,28 +542,92 @@ def pf2_proj11_receive(params:Mapping[str, Any], session:Session) -> Mapping[str
     # Accept the submission
     return accept_submission(session, submission)
 
-def pf2_proj12_receive(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj12', accounts, 'pf2_proj12_submit.html')
-    if not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
+course_desc:Mapping[str,Any] = {
+    'course_long': 'Programming Foundations II',
+    'course_short': 'pf2',
+    'accounts': 'pf2_accounts.json',
+    'projects': {
+        'proj1': {
+            'title': 'Project 1',
+            'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj1,
+        },
+        'proj2': {
+            'title': 'Project 2',
+            'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj2,
+        },
+        'proj3': {
+            'title': 'Project 3',
+            'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj3,
+        },
+        'proj4': {
+            'title': 'Project 4',
+            'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj4,
+        },
+        'proj5': {
+            'title': 'Project 5',
+            'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj5,
+        },
+        'proj6': {
+            'title': 'Project 6',
+            'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj6,
+        },
+        'proj7': {
+            'title': 'Project 7',
+            'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj7,
+        },
+        'proj8': {
+            'title': 'Project 8',
+            'due_time': datetime(year=2024, month=4, day=8, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj8,
+        },
+        'proj9': {
+            'title': 'Project 9',
+            'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj9,
+        },
+        'proj10': {
+            'title': 'Project 10',
+            'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj10,
+        },
+        'proj11': {
+            'title': 'Project 11',
+            'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
+            'evaluator': evaluate_proj11,
+        },
+    }
+}
 
-    # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''Aloysius
-8'''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(session, str(e))
-    if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
-            'Did not find xxx.',
-            args, input, output,
-        )
+try:
+    accounts:Dict[str,Any] = autograder.load_accounts(course_desc['accounts'])
+except:
+    print('*** FAILED TO LOAD PF2 ACCOUNTS! Starting an empty file!!!')
+    accounts = {}
 
-    # Accept the submission
-    return accept_submission(session, submission)
+
+
+def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+    # Give the student credit
+    account = submission['account']
+    days_late = submission['days_late']
+    title_clean = submission['title_clean']
+    covered_days = min(days_late, account["toks"])
+    account["toks"] -= covered_days
+    days_late -= covered_days
+    score = max(30, 100 - 3 * days_late)
+    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+    account[title_clean] = score
+    autograder.save_accounts(course_desc['accounts'], accounts)
+
+    # Make an acceptance page
+    return autograder.accept_submission(session, submission, days_late, covered_days, score)
 
 
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
