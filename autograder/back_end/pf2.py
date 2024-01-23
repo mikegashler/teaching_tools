@@ -707,6 +707,9 @@ def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[s
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     return autograder.make_log_out_page(params, session)
 
+def reset_password(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    return autograder.make_password_reset_page(params, session, 'pf2_reset_password', accounts, course_desc)
+
 # To initialize the accounts at the start of a semester
 # (1) Delete the accounts file (or else this will just add to it)
 # (2) Paste a list of student names below.

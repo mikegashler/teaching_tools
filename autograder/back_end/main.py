@@ -33,6 +33,8 @@ def main() -> None:
         'game.html': banana_quest.make_game_page,
         'redirect.html': banana_quest.make_redirect_page,
         'log_out.html': autograder.make_log_out_page,
+        'pf2_reset_password.html': pf2.reset_password,
+        'dsa_reset_password.html': dsa.reset_password,
     }
     autograder.generate_submit_and_receive_pages(page_makers, pf2.course_desc, pf2.accounts)
     autograder.generate_submit_and_receive_pages(page_makers, dsa.course_desc, dsa.accounts)

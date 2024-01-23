@@ -342,6 +342,48 @@ def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         'content': ''.join(p),
     }
 
+def make_password_reset_page(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
+    # Make sure we are logged in
+    if not session.logged_in():
+        return make_login_page(params, session, dest_page, accounts)
+    try:
+        account = accounts[session.name]
+    except:
+        return make_login_page(params, session, dest_page, accounts, f'Unrecognized account name: {session.name}')
+    log(f'account={account}')
+    if (not 'ta' in account) or account['ta'] != 'true':
+        return {
+            'content': '403 Forbidden'
+        }
+
+    # Change password
+    if 'resetme' in params:
+        account['pw'] = change_me_hash
+        save_accounts(str(course_desc['accounts']), accounts)
+
+    p:List[str] = []
+    page_start(p, session)
+    p.append('<h3>Whose password do you want to reset?</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post" onsubmit="hash_password(\'password\');">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student whose password to reset:')
+    p.append('</td><td>')
+    p.append('<select name="resetme">')
+    for name in sorted(accounts):
+        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
+            p.append(f'<option name="{name}" value="{name}">{name}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Log in">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+    page_end(p)
+    return {
+        'content': ''.join(p),
+    }
+
 def make_submission_page(
     params:Mapping[str, Any],
     session:Session,

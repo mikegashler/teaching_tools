@@ -167,7 +167,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 
     # Test 2: See if it sorts by the second column correctly
     try:
-        args:List[str] = []
+        args = []
         input = '''1
 /var/www/autograder/test_data/simple.csv
 4
@@ -191,7 +191,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 
     # Test 3: See if it sorts by the third column correctly
     try:
-        args:List[str] = []
+        args = []
         input = '''1
 /var/www/autograder/test_data/simple.csv
 4
@@ -472,6 +472,9 @@ def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[s
 
 def log_out(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     return autograder.make_log_out_page(params, session)
+
+def reset_password(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    return autograder.make_password_reset_page(params, session, 'dsa_reset_password', accounts, course_desc)
 
 # To initialize the accounts at the start of a semester
 # (1) Delete the accounts file (or else this will just add to it)
