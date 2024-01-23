@@ -141,20 +141,77 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: See if it prints the contents of a csv file when loaded
+    # Test 1: See if it sorts a single column correctly
     try:
         args:List[str] = []
         input = '''1
-xxx
+/var/www/autograder/test_data/single_col.csv
+4
+0
+5
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
-    if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
-            'Could not find xxx',
-        args, input, output
-        )
+    terms_in_order = ['stuff', 'eat', 'swim', 'down', 'toothy', 'money', 'zebras']
+    prev = -1
+    for i in range(1, len(terms_in_order)):
+        pos = output.find(terms_in_order[i])
+        if i > 0:
+            if prev >= pos:
+                return autograder.reject_submission(session,
+                    'I sorted the only column, but the order came out wrong.',
+                    args, input, output
+                )
+        prev = pos
+
+    # Test 2: See if it sorts by the second column correctly
+    try:
+        args:List[str] = []
+        input = '''1
+/var/www/autograder/test_data/simple.csv
+4
+1
+5
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    terms_in_order = ['Food', 'doughnut', 'fish', 'apple', 'grapes', 'carrot', 'eggs', 'banana']
+    prev = -1
+    for i in range(1, len(terms_in_order)):
+        pos = output.find(terms_in_order[i])
+        if i > 0:
+            if prev >= pos:
+                return autograder.reject_submission(session,
+                    'I sorted by the second column, then checked the order in the first column, and the order was incorrect.',
+                    args, input, output
+                )
+        prev = pos
+
+    # Test 3: See if it sorts by the third column correctly
+    try:
+        args:List[str] = []
+        input = '''1
+/var/www/autograder/test_data/simple.csv
+4
+2
+5
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    terms_in_order = ['Food', 'fish', 'eggs', 'apple', 'banana', 'doughnut']
+    prev = -1
+    for i in range(1, len(terms_in_order)):
+        pos = output.find(terms_in_order[i])
+        if i > 0:
+            if prev >= pos:
+                return autograder.reject_submission(session,
+                    'I sorted by the third column, then checked the order in the first column, and the order was incorrect.',
+                    args, input, output
+                )
+        prev = pos
 
     # Accept the submission
     return accept_submission(session, submission)

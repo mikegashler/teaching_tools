@@ -345,6 +345,7 @@ plot
 plots
 pol
 pons
+poop
 post
 pot
 pots
@@ -372,6 +373,7 @@ tops
 tor
 torn
 tors
+tot
 urn
 urns
 wrist
@@ -389,6 +391,12 @@ wrist
                 f'Failed to find the word "{word}".',
                 args, input, output,
             )
+    for word in ['poop', 'tot']:
+        if output.find(word) >= 0:
+            return autograder.reject_submission(session,
+                f'It looks like your implementation does not prevent letters from being used multiple times. For example, your implementation reported the invalid word "{word}".',
+                args, input, output,
+            )
     for word in ['salad', 'salmon', 'taco', 'wrist', 'six']:
         if output.find(word) >= 0:
             return autograder.reject_submission(session,
@@ -397,7 +405,7 @@ wrist
             )
     if output.find('porn') >= 0:
         return autograder.reject_submission(session,
-            f'Found the word "porn", which was not in the lexicon!',
+            f'Found the word "porn", which was not even in the lexicon!',
             args, input, output,
         )
 
@@ -413,14 +421,14 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
-        input = '''Aloysius
-8'''
+        input = '''7
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
-    if output.find('xxx') < 0:
+    if output.find('passed') < 0:
         return autograder.reject_submission(session,
-            'Did not find xxx.',
+            'The unit test did not pass.',
             args, input, output,
         )
 
@@ -433,17 +441,83 @@ def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     if not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: See if it produces the exactly correct output
+    # Test 1: Sort a very small list
     try:
         args = ['quiet']
-        input = '''Aloysius
-8'''
+        input = '''1
+monkey
+1 salad
+alligator
+11 pizza
+zebra
+8 cheese
+
+8
+2
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
-    if output.find('xxx') < 0:
+    words_in_order = ['zebra', 'monkey', 'alligator', 'pizza', 'cheese', 'salad']
+    prev = -1
+    for i in range(len(words_in_order)):
+        pos = output.find(words_in_order[i])
+        if i > 0 and pos <= prev:
+            return autograder.reject_submission(session,
+                f'The sorted order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
+                args, input, output,
+            )
+        prev = pos
+    comp = 'comparisons: '
+    comp_pos = output.find(comp)
+    if comp_pos < 0:
         return autograder.reject_submission(session,
-            'Did not find xxx.',
+            f'Did not find the string "comparisons: " in your output. See step 2.d.',
+            args, input, output,
+        )
+    comp_pos += len(comp)
+    i = 0
+    while output[comp_pos + i].isdigit():
+        i += 1
+    if i == 0:
+        return autograder.reject_submission(session,
+            f'Expected a number after "comparisons: ". See step 2.d.',
+            args, input, output,
+        )
+    comp_val = int(output[comp_pos:comp_pos + 1])
+    if comp_val <= 6 or comp_val >= 16:
+        return autograder.reject_submission(session,
+            f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
+            args, input, output,
+        )
+
+    # Test 2: Sort a bigger list
+    try:
+        args = ['quiet']
+        input = '1\n' + ('xyz' * 1024) + '\n8\n'
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    comp = 'comparisons: '
+    comp_pos = output.find(comp)
+    if comp_pos < 0:
+        return autograder.reject_submission(session,
+            f'Did not find the string "comparisons: " in your output. See step 2.d.',
+            args, input, output,
+        )
+    comp_pos += len(comp)
+    i = 0
+    while output[comp_pos + i].isdigit():
+        i += 1
+    if i == 0:
+        return autograder.reject_submission(session,
+            f'Expected a number after "comparisons: ". See step 2.d.',
+            args, input, output,
+        )
+    comp_val = int(output[comp_pos:comp_pos + 1])
+    if comp_val <= 5118 or comp_val >= 10241:
+        return autograder.reject_submission(session,
+            f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
 

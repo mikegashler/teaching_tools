@@ -398,10 +398,10 @@ def make_submission_page(
             'content': ''.join(p),
         }
 
-    if title_clean in account and account[title_clean] > 0:
+    if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
         p = []
         page_start(p, session)
-        p.append('You have already received full credit for this assignment. There is no need to submit it again.')
+        p.append('You have already received credit for this assignment. There is no need to submit it again.')
         page_end(p)
         return {
             'content': ''.join(p),
