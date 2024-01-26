@@ -166,7 +166,7 @@ def receive_and_unpack_submission(params:Mapping[str, Any], course:str, project:
     # Make a folder for the submission
     t = datetime.now()
     date_stamp = f'{t.year:04}-{t.month:02}-{t.day:02}_{t.hour:02}-{t.minute:02}-{t.second:02}-{t.microsecond:06}'
-    student = student.replace(' ', '_').replace(',', '_')
+    student = student.replace(' ', '_').replace(',', '_').replace('\'', '_')
     basename = os.path.join(course, project, student, date_stamp)
     log(f'making dirs: {basename}')
     os.makedirs(basename)
@@ -314,6 +314,7 @@ def accept_submission(
         'content': ''.join(p),
     }
 
+
 def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], message:str='') -> Mapping[str, Any]:
     selected_name = params['name'] if 'name' in params else ''
     p:List[str] = []
@@ -327,6 +328,7 @@ def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Name:')
     p.append('</td><td>')
     p.append('<select name="name">')
+    p.append(f'<option name="-- Choose your name --" value="bogus">')
     for name in sorted(accounts):
         p.append(f'<option name="{name}" value="{name}"{" selected" if name == selected_name else ""}>{name}</option>')
     p.append('</select>')
@@ -342,7 +344,17 @@ def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         'content': ''.join(p),
     }
 
-def make_password_reset_page(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
+def require_login(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
+    # Log in if credentials were provided
+    if 'name' in params and 'password' in params:
+        try:
+            account = accounts[params['name']]
+        except:
+            return make_login_page(params, session, dest_page, accounts, f'Unrecognized name: {params["name"]}')
+        if account['pw'] != params['password']:
+            return make_login_page(params, session, dest_page, accounts, f'Incorrect password. (Please contact the instructor if you need to have your password reset.)')
+        session.name = params['name']
+
     # Make sure we are logged in
     if not session.logged_in():
         return make_login_page(params, session, dest_page, accounts)
@@ -350,73 +362,8 @@ def make_password_reset_page(params:Mapping[str, Any], session:Session, dest_pag
         account = accounts[session.name]
     except:
         return make_login_page(params, session, dest_page, accounts, f'Unrecognized account name: {session.name}')
-    log(f'account={account}')
-    if (not 'ta' in account) or account['ta'] != 'true':
-        return {
-            'content': '403 Forbidden'
-        }
-
-    # Change password
-    if 'resetme' in params:
-        account['pw'] = change_me_hash
-        save_accounts(str(course_desc['accounts']), accounts)
-
-    p:List[str] = []
-    page_start(p, session)
-    p.append('<h3>Whose password do you want to reset?</h3>')
-    p.append(f'<form action="{dest_page}"')
-    p.append(' method="post" onsubmit="hash_password(\'password\');">')
-    p.append('<table>')
-    p.append('<tr><td>')
-    p.append('Student whose password to reset:')
-    p.append('</td><td>')
-    p.append('<select name="resetme">')
-    for name in sorted(accounts):
-        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
-            p.append(f'<option name="{name}" value="{name}">{name}</option>')
-    p.append('</select>')
-    p.append('</td></tr>')
-    p.append('<tr><td></td><td><input type="submit" value="Log in">')
-    p.append('</td></tr></table>')
-    p.append('</form>')
-    page_end(p)
-    return {
-        'content': ''.join(p),
-    }
-
-def make_submission_page(
-    params:Mapping[str, Any],
-    session:Session,
-    course_desc:Mapping[str,Any],
-    project_name:str,
-    accounts:Dict[str,Any],
-    submit_page:str,
-    receive_page:str,
-) -> Mapping[str, Any]:
-    desc = course_desc['projects'][project_name]
-    title = desc['title']
-    title_clean = title.replace(' ', '_')
-    due_time = desc['due_time']
-    course_name = course_desc['course_long'],
-
-    # Log in if credentials were provided
-    if 'name' in params and 'password' in params:
-        try:
-            account = accounts[params['name']]
-        except:
-            return make_login_page(params, session, submit_page, accounts, f'Unrecognized name: {params["name"]}')
-        if account['pw'] != params['password']:
-            return make_login_page(params, session, submit_page, accounts, f'Incorrect password. (Please contact the instructor if you need to have your password reset.)')
-        session.name = params['name']
-
-    # Make sure we are logged in
-    if not session.logged_in():
-        return make_login_page(params, session, submit_page, accounts)
-    try:
-        account = accounts[session.name]
-    except:
-        return make_login_page(params, session, submit_page, accounts, f'Unrecognized account name: {session.name}')
-    log(f'account={account}')
+    
+    #### At this point we are logged in, so now let's check some operations that require being logged in...
 
     # Change password
     if 'first' in params and 'second' in params and params['first'] == params['second']:
@@ -440,10 +387,141 @@ def make_submission_page(
             'content': ''.join(p),
         }
 
+    return {}
+
+def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
+    # Make sure the we are logged in as a TA
+    response = require_login(params, session, dest_page, accounts, course_desc)
+    if 'content' in response:
+        return response
+    account = accounts[session.name]
+    if (not 'ta' in account) or account['ta'] != 'true':
+        return {
+            'content': '403 Forbidden'
+        }
+
+    # Add a new student
+    if 'newstudent' in params:
+        if params['newstudent'] in accounts:
+            return {
+                'content': f'Error, account for {params["newstudent"]} already exists!'
+            }
+        add_students([ params['newstudent'] ], accounts)
+        save_accounts(str(course_desc['accounts']), accounts)
+        print(f'Added new student: {params["newstudent"]}')
+
+    # Reset a student's password
+    if 'resetme' in params:
+        if not params['resetme'] in accounts:
+            return {
+                'content': f"Error, account for {params['resetme']} not found!"
+            }
+        student_account = accounts[params['resetme']]
+        student_account['pw'] = change_me_hash
+        save_accounts(str(course_desc['accounts']), accounts)
+        print(f'Reset password for: {params["resetme"]}')
+
+    # Grant late tokens
+    if 'addtoks' in params and 'student' in params:
+        if not params['student'] in accounts:
+            return {
+                'content': f"Error, account for {params['student']} not found!"
+            }
+        student_account = accounts[params['student']]
+        student_account['toks'] += int(params['addtoks'])
+        save_accounts(str(course_desc['accounts']), accounts)
+        print(f'Updated token balance for {params["student"]} to {student_account["toks"]}')
+
+    p:List[str] = []
+    page_start(p, session)
+
+    # Form to reset a password
+    p.append('<h2>Reset a student\'s password</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post" onsubmit="hash_password(\'password\');">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student whose password to reset:')
+    p.append('</td><td>')
+    p.append('<select name="resetme">')
+    for name in sorted(accounts):
+        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
+            p.append(f'<option name="{name}" value="{name}">{name}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Reset password!">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    # Form to add a new student
+    p.append('<h2>Add a new student</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post"">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student name:')
+    p.append('</td><td>')
+    p.append('<input type="text" name="newstudent">')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Add new student">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    # Form to grant late tokents
+    p.append('<h2>Grant late tokens</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student to grant tokens to:')
+    p.append('</td><td>')
+    p.append('<select name="student">')
+    for name in sorted(accounts):
+        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
+            p.append(f'<option name="{name}" value="{name}">{name}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td>')
+    p.append('Number of tokens to grant:')
+    p.append('</td><td>')
+    p.append('<input type="text" name="addtoks">')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Grant tokens">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    page_end(p)
+    return {
+        'content': ''.join(p),
+    }
+
+def make_submission_page(
+    params:Mapping[str, Any],
+    session:Session,
+    course_desc:Mapping[str,Any],
+    project_name:str,
+    accounts:Dict[str,Any],
+    submit_page:str,
+    receive_page:str,
+) -> Mapping[str, Any]:
+    # Make sure the user is logged in
+    response = require_login(params, session, submit_page, accounts, course_desc)
+    if 'content' in response:
+        return response
+    account = accounts[session.name]
+
+    # Extract some values
+    desc = course_desc['projects'][project_name]
+    title = desc['title']
+    title_clean = title.replace(' ', '_')
+    due_time = desc['due_time']
+    course_name = course_desc['course_long']
+
+    # Make sure the student still needs to submit this project
     if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
-        p = []
+        p:List[str] = []
         page_start(p, session)
-        p.append('You have already received credit for this assignment. There is no need to submit it again.')
+        p.append(f'You have already received credit for {title}. There is no need to submit it again.')
         page_end(p)
         return {
             'content': ''.join(p),
@@ -489,40 +567,24 @@ def unpack_submission(
         accounts:Dict[str,Any],
         submit_page:str,
 ) -> Mapping[str,Any]:
-    desc = course_desc['projects'][project_name]
-
     # Make sure the user is logged in
-    if not session.logged_in():
-        return {
-            'succeeded': False,
-            'page': make_login_page(params, session, submit_page, accounts),
-        }
-
-    # Find the account
-    title:str = str(desc['title'])
-    title_clean = title.replace(' ', '_')
-    try:
-        account = accounts[session.name]
-    except:
-        return {
-            'succeeded': False,
-            'page': make_login_page(
-                params,
-                session,
-                submit_page,
-                accounts,
-                f'Unrecognized account name: {session.name}',
-            )
-        }
+    response = require_login(params, session, submit_page, accounts, course_desc)
+    if 'content' in response:
+        return response
+    account = accounts[session.name]
 
     # Compute the number of days late
     submission_grace_seconds = 15 * 60
     seconds_per_day = 24 * 60 * 60
     now_time = datetime.now()
+    desc = course_desc['projects'][project_name]
     days_late = max(0, int((((now_time - desc['due_time']).total_seconds() - submission_grace_seconds) // seconds_per_day) + 1))
 
     # Unpack the submission
     try:
+        desc = course_desc['projects'][project_name]
+        title = desc['title']
+        title_clean = title.replace(' ', '_')
         folder = receive_and_unpack_submission(params, course_desc['course_short'], title_clean, session.name)
     except Exception as e:
         print(traceback.format_exc())
