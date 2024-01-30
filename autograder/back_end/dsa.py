@@ -7,7 +7,7 @@ import autograder
 def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'dsa_proj1_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded
@@ -31,7 +31,7 @@ def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'dsa_proj2_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the stats correctly
@@ -102,7 +102,7 @@ def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'dsa_proj3_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the stats correctly
@@ -138,7 +138,7 @@ def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'dsa_proj4_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it sorts a single column correctly
@@ -219,7 +219,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'dsa_proj5_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded
@@ -243,7 +243,7 @@ xxx
 def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'dsa_proj6_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded
@@ -267,7 +267,7 @@ xxx
 def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'dsa_proj7_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded
@@ -291,7 +291,7 @@ xxx
 def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'dsa_proj8_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded
@@ -315,7 +315,7 @@ xxx
 def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'dsa_proj9_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded
@@ -339,7 +339,7 @@ xxx
 def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'dsa_proj10_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded
@@ -363,7 +363,7 @@ xxx
 def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'dsa_proj11_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it prints the contents of a csv file when loaded

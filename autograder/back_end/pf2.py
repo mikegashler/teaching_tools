@@ -7,7 +7,7 @@ import autograder
 def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'pf2_proj1_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
@@ -51,7 +51,7 @@ Thanks for stopping by. Have a nice day!
 def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'pf2_proj2_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: not debug mode, short list
@@ -159,7 +159,7 @@ tricky
 def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'pf2_proj3_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: Make sure the name was changed and it prints words entered so far
@@ -242,7 +242,7 @@ pig
 def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'pf2_proj4_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
@@ -279,7 +279,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'pf2_proj5_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
@@ -415,7 +415,7 @@ wrist
 def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'pf2_proj6_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
@@ -438,7 +438,7 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'pf2_proj7_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: Sort a very small list
@@ -527,7 +527,7 @@ zebra
 def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'pf2_proj8_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
@@ -550,7 +550,7 @@ def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'pf2_proj9_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
@@ -573,7 +573,7 @@ def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'pf2_proj10_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
@@ -596,7 +596,7 @@ def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, A
 def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
     submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'pf2_proj11_submit.html')
-    if not submission['succeeded']:
+    if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
     # Test 1: See if it produces the exactly correct output
