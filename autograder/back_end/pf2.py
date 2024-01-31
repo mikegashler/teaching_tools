@@ -66,6 +66,11 @@ epsilon
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('debug mode') >= 0:
         return autograder.reject_submission(session,
             'I did not pass in the "debug" flag, but it still ran in debug mode!',
@@ -172,6 +177,11 @@ gamma'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('Aloysius') >= 0:
         return autograder.reject_submission(session,
             'You were supposed to change the name. See step 2.b.',
@@ -267,6 +277,11 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('#///#   #') < 0:
         return autograder.reject_submission(session,
             'Flood fill did not work correctly. It should have filled the left-side box with slashes, but left the right-side box empty.',
@@ -383,6 +398,11 @@ wrist
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     for word in ['in', 'ink', 'inkpots', 'inro', 'jink',
                  'knops', 'knots', 'lost', 'minors',
                  'plonk', 'storm', 'urns']:
@@ -426,6 +446,11 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('passed') < 0:
         return autograder.reject_submission(session,
             'The unit test did not pass.',
@@ -458,6 +483,11 @@ zebra
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     words_in_order = ['zebra', 'monkey', 'alligator', 'pizza', 'cheese', 'salad']
     prev = -1
     for i in range(len(words_in_order)):
@@ -538,6 +568,11 @@ def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Did not find xxx.',
@@ -561,6 +596,11 @@ def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Did not find xxx.',
@@ -584,6 +624,11 @@ def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, A
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Did not find xxx.',
@@ -607,6 +652,11 @@ def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, A
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Did not find xxx.',

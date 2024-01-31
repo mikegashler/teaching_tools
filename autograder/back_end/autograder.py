@@ -41,7 +41,7 @@ sudo dos2unix -q ./run.bash
 sudo chmod 755 ./run.bash
 
 # Launch the "run.bash" script
-sudo -u sandbox ./run.bash $* < _input.txt &
+sudo -u sandbox ./run.bash $* < _stdin.txt &
 
 # Start a time-out timer
 CHILD_PID=$!
@@ -91,7 +91,7 @@ dos2unix -q ./run.bash
 chmod 755 ./run.bash
 
 # Launch the "run.bash" script
-./run.bash $* < _input.txt &
+./run.bash $* < _stdin.txt &
 
 # Start a time-out timer
 CHILD_PID=$!
@@ -137,7 +137,7 @@ fi
 def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='', sandbox:bool=True) -> str:
     # Write the input to a file
     start_folder = submission['folder']
-    with open(os.path.join(start_folder, '_input.txt'), 'w') as f:
+    with open(os.path.join(start_folder, '_stdin.txt'), 'w') as f:
         f.write(input)
         f.write('\n\n\n\n\n\n\n\n') # Add a few newlines to flush any superfluous input prompts
 
@@ -146,12 +146,14 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
         f.write(launch_script_with_sandbox if sandbox else launch_script_without_sandbox)
 
     # Execute the launch script
-    os.system(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)} > _output.txt')
+    os.system(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)} > _stdout.txt 2> _stderr.txt')
 
     # Read the output
-    with open(os.path.join(start_folder, '_output.txt'), 'r') as f:
-        output = f.read()
-    return output
+    with open(os.path.join(start_folder, '_stdout.txt'), 'r') as f:
+        stdout = f.read()
+    with open(os.path.join(start_folder, '_stderr.txt'), 'r') as f:
+        stderr = f.read()
+    return stdout + stderr
 
 # Receives a submission. Unzips it. Checks for common problems.
 # Executes it, and returns the output as a string.
@@ -600,6 +602,10 @@ def unpack_submission(
         'folder': folder,
         'title_clean': title_clean,
     }
+
+# def eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]]) -> None:
+#     thread = threading.Thread(target=eval_func, args=(params, session))
+#     xxx
 
 # Consumes course_descs
 # Adds page makers for the submit pages to the page_makers dictionary
