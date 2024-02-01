@@ -1,4 +1,4 @@
-from typing import Mapping, Any, List, Dict, cast, Callable, Optional
+from typing import Mapping, Any, List, Dict, cast, Callable, Optional, Tuple
 import json
 import shutil
 import zipfile
@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from http_daemon import Session, log
 import traceback
 import threading
+import random
+import string
 
 os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
 
@@ -611,7 +613,7 @@ class Job():
         self.time = datetime.now()
         self.results:Optional[Mapping[str,Any]] = None
 
-jobs:Dict[str,Dict[]] = {}
+jobs:Dict[str,Job] = {}
 
 # Make a redirect page that will check again in a few seconds
 def make_working_page(id:str) -> Mapping[str,Any]:
@@ -658,7 +660,7 @@ def get_results(params: Mapping[str, Any], session: Session) -> Mapping[str, Any
         }
     id = params['job']
     if not id in jobs:
-        p:List[str] = []
+        p = []
         page_start(p, session)
         p.append(f'Error: job with id {id} not found!')
         page_end(p)
@@ -699,7 +701,9 @@ def launch_eval_thread(params: Mapping[str, Any], session: Session, eval_func:Ca
     return make_working_page(id)
 
 # Consumes course_descs
-# Adds page makers for the submit pages to the page_makers dictionary
+# Adds page makers for the submit pages and receive pages to the page_makers dictionary
+# (This function is rather hard to follow because it uses a nested-closure. Be careful.
+# The nested closure is necessary so that unique variable values will be bound to the inner-most functions.)
 def generate_submit_and_receive_pages(
         page_makers:Dict[str,Callable[[Mapping[str,Any],Session],Mapping[str,Any]]],
         course_desc:Mapping[str,Any],
@@ -708,22 +712,22 @@ def generate_submit_and_receive_pages(
     for proj in course_desc['projects']:
         submit_page_name = f'{course_desc["course_short"]}_{proj}_submit.html'
         receive_page_name = f'{course_desc["course_short"]}_{proj}_receive.html'
-        def page_maker_factory(proj_short_name:str, submit_page:str, receive_page:str) -> Callable[[Mapping[str,Any],Session],Mapping[str,Any]]: # So make_submit_page can bind to the unique parameters of this function
-            def make_submit_page(params: Mapping[str, Any], session: Session) -> Tuple[Mapping[str,Any],Mapping[str,Any]]:
+        def page_maker_factory(proj_short_name:str, submit_page:str, receive_page:str) -> Tuple[Callable[[Mapping[str,Any],Session],Mapping[str,Any]],Callable[[Mapping[str,Any],Session],Mapping[str,Any]]]: # So make_submit_page can bind to the unique parameters of this function
+            def make_submit_page(params: Mapping[str, Any], session: Session) -> Mapping[str,Any]:
                 return make_submission_page(
                     params,
                     session,
-                    course_desc,
-                    proj_short_name,
-                    accounts,
-                    submit_page,
-                    receive_page,
-                ),
+                    course_desc, # from outer closure
+                    proj_short_name, # from inner closure
+                    accounts, # from outer closure
+                    submit_page, # from inner closure
+                    receive_page, # from inner closure
+                )
+            def make_receive_page(params: Mapping[str, Any], session: Session) -> Mapping[str,Any]:
                 return launch_eval_thread(
                     params,
                     session,
-                    course_desc['projects'][proj]['evaluator']
+                    course_desc['projects'][proj]['evaluator'], # from outer closure
                 )
-        #page_makers[submit_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)
-        #page_makers[receive_page_name] = course_desc['projects'][proj]['evaluator']
+            return make_submit_page, make_receive_page
         page_makers[submit_page_name], page_makers[receive_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)
