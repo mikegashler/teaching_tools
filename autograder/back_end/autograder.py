@@ -730,4 +730,4 @@ def generate_submit_and_receive_pages(
                     course_desc['projects'][project_id]['evaluator'], # project_id from inner closure. course_desc is from outer closure, but that is okay because it the same for all projects
                 )
             return make_submit_page, make_receive_page
-        page_makers[submit_page_name], page_makers[receive_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)
+        page_makers[submit_page_name], page_makers[receive_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name, proj)
