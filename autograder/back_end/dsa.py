@@ -3,6 +3,7 @@ from datetime import datetime
 from http_daemon import Session, log
 from datetime import datetime
 import autograder
+import sys
 
 def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
@@ -19,6 +20,11 @@ def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('carrot') < 0:
         return autograder.reject_submission(session,
             'I chose option 1 to load a CSV file, but the contents of that CSV file did not appear in the output. Did you print the CSV contents as described in step 8.l?',
@@ -45,45 +51,50 @@ def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('9') < 0:
         return autograder.reject_submission(session,
             'I directed your program to load a dataset with 9 rows (not including the column names) and then print stats, but I could not find "9" anywhere in the output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('3') < 0:
         return autograder.reject_submission(session,
             'I directed your program to load a dataset with 3 columns and then print stats, but I could not find "3" anywhere in the output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('4') < 0:
         return autograder.reject_submission(session,
             'I directed your program to load a dataset with 4 unique values in one of the columns, but I could not find "4" anywhere in the output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('5') < 0:
         return autograder.reject_submission(session,
             'I directed your program to load a dataset with 5 unique values in one of the columns, but I could not find "5" anywhere in the output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('6') < 0:
         return autograder.reject_submission(session,
             'The most common value in one of the columns was "6", but I could not find "6" anywhere in the output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('7') < 0:
         return autograder.reject_submission(session,
             'There were 7 unique values in one of the columns, but I could not find "7" anywhere in the output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('apple') < 0:
         return autograder.reject_submission(session,
             'The most common value in one of the columns was "apple", but I could not find "apple" anywhere in the output of your program.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('red') < 0:
         return autograder.reject_submission(session,
             'The most common value in one of the columns was "red", but I could not find "red" anywhere in the output of your program.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('yellow') >= 0:
         return autograder.reject_submission(session,
@@ -116,20 +127,25 @@ def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('Color') < 0:
         return autograder.reject_submission(session,
             'I loaded a dataset with a column named "Color", and I printed stats, but the word "Color" did not occur in your output. Did you print all the column names?',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if output.find('9') < 0:
         return autograder.reject_submission(session,
             'The max value in one of the columns was 9.0, but I did not find "9" in your output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if output.find('5.714') < 0:
         return autograder.reject_submission(session,
             'The mean value in one of the columns was 5.71428, but I did not find this value in your output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Accept the submission
@@ -153,6 +169,11 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     terms_in_order = ['stuff', 'eat', 'swim', 'down', 'toothy', 'money', 'zebras']
     prev = -1
     for i in range(1, len(terms_in_order)):
@@ -160,7 +181,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         if i > 0:
             if prev >= pos:
                 return autograder.reject_submission(session,
-                    'I sorted the only column, but the order came out wrong.',
+                    'The sorted order came out wrong. Did you sort correctly?',
                     args, input, output
                 )
         prev = pos
@@ -185,7 +206,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
             if prev >= pos:
                 return autograder.reject_submission(session,
                     'I sorted by the second column, then checked the order in the first column, and the order was incorrect.',
-                    args, input, output
+                    args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
                 )
         prev = pos
 
@@ -209,7 +230,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
             if prev >= pos:
                 return autograder.reject_submission(session,
                     'I sorted by the third column, then checked the order in the first column, and the order was incorrect.',
-                    args, input, output
+                    args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
                 )
         prev = pos
 
@@ -231,6 +252,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Could not find xxx',
@@ -255,6 +281,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Could not find xxx',
@@ -279,6 +310,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Could not find xxx',
@@ -303,6 +339,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Could not find xxx',
@@ -327,6 +368,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Could not find xxx',
@@ -351,6 +397,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Could not find xxx',
@@ -375,6 +426,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
     if output.find('xxx') < 0:
         return autograder.reject_submission(session,
             'Could not find xxx',

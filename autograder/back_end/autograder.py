@@ -9,6 +9,7 @@ import traceback
 import threading
 import random
 import string
+import sys
 
 os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
 
@@ -258,8 +259,8 @@ def page_start(p:List[str], session:Session) -> None:
     p.append('.code {')
     p.append('  color:#a0ffa0;')
     p.append('  background-color:#000000;')
-    p.append('  width:100%;')
-    p.append('  overflow-x:scroll;')
+    p.append('  width:auto;')
+    p.append('  white-space: pre-wrap;')
     p.append('}')
     p.append('</style>')
     p.append('<script src="sha512.js"></script>')
@@ -279,8 +280,23 @@ def page_end(p:List[str]) -> None:
     p.append('</body>')
     p.append('</html>')
 
+# Loads a file and converts it to a string for displaying in an error message
+def display_data(filename:str) -> str:
+    p:List[str] = []
+    p.append('Data:<br><pre class="code">')
+    with open(filename, 'r') as f:
+        p.append(f.read())
+    p.append('</pre><br><br>')
+    return ''.join(p)
+
 # Makes a page describing why the submission was rejected
-def reject_submission(session:Session, message:str, args:List[str]=[], input:str='', output:str='', post_message:str='') -> Mapping[str, Any]:
+def reject_submission(
+        session:Session, 
+        message:str, 
+        args:List[str]=[], 
+        input:str='', 
+        output:str='', 
+        post_message:str='') -> Mapping[str, Any]:
     p:List[str] = []
     page_start(p, session)
     p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
@@ -349,6 +365,8 @@ def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         'content': ''.join(p),
     }
 
+# Returns an empy dictionary if the user is already logged in.
+# Returns a login page (with the destination set as specified) if the user is not logged in.
 def require_login(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
     # Log in if credentials were provided
     if 'name' in params and 'password' in params:
@@ -563,7 +581,16 @@ def make_log_out_page(params: Mapping[str, Any], session: Session) -> Mapping[st
         'content': ''.join(p),
     }
 
-
+# If successful, returns
+# {
+#   'succeeded': True,
+#   ...info about the unpacked submission
+# }
+# If unsuccessful, returns
+# {
+#   'succeeded': False,
+#   'page': { 'content': some error page }
+# }
 def unpack_submission(
         params: Mapping[str, Any],
         session: Session,
@@ -572,10 +599,15 @@ def unpack_submission(
         accounts:Dict[str,Any],
         submit_page:str,
 ) -> Mapping[str,Any]:
+    print(f'in unpack_submission for session.name={session.name}', file=sys.stderr)
+
     # Make sure the user is logged in
     response = require_login(params, session, submit_page, accounts, course_desc)
     if 'content' in response:
-        return response
+        return {
+            'succeeded': False,
+            'page': response,
+        }
     account = accounts[session.name]
 
     # Compute the number of days late
@@ -683,6 +715,7 @@ def purge_dead_jobs() -> None:
 # This is the thread that evaluates a submission
 def eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]], id:str) -> None:
     global jobs
+    print(f'in eval_thread for session.name={session.name}', file=sys.stderr)
     the_job = jobs[id]
     the_job.results = eval_func(params, session)
 
