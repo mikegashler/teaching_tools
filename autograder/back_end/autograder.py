@@ -712,14 +712,14 @@ def generate_submit_and_receive_pages(
     for proj in course_desc['projects']:
         submit_page_name = f'{course_desc["course_short"]}_{proj}_submit.html'
         receive_page_name = f'{course_desc["course_short"]}_{proj}_receive.html'
-        def page_maker_factory(proj_short_name:str, submit_page:str, receive_page:str) -> Tuple[Callable[[Mapping[str,Any],Session],Mapping[str,Any]],Callable[[Mapping[str,Any],Session],Mapping[str,Any]]]: # So make_submit_page can bind to the unique parameters of this function
+        def page_maker_factory(proj_short_name:str, submit_page:str, receive_page:str, project_id:str) -> Tuple[Callable[[Mapping[str,Any],Session],Mapping[str,Any]],Callable[[Mapping[str,Any],Session],Mapping[str,Any]]]:
             def make_submit_page(params: Mapping[str, Any], session: Session) -> Mapping[str,Any]:
                 return make_submission_page(
                     params,
                     session,
-                    course_desc, # from outer closure
+                    course_desc, # from outer closure, but that is okay because it is the same for all projects
                     proj_short_name, # from inner closure
-                    accounts, # from outer closure
+                    accounts, # from outer closure, but that is okay because it is the same for all projects
                     submit_page, # from inner closure
                     receive_page, # from inner closure
                 )
@@ -727,7 +727,7 @@ def generate_submit_and_receive_pages(
                 return launch_eval_thread(
                     params,
                     session,
-                    course_desc['projects'][proj]['evaluator'], # from outer closure
+                    course_desc['projects'][project_id]['evaluator'], # project_id from inner closure. course_desc is from outer closure, but that is okay because it the same for all projects
                 )
             return make_submit_page, make_receive_page
         page_makers[submit_page_name], page_makers[receive_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)
