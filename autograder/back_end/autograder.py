@@ -1,11 +1,12 @@
-from typing import Mapping, Any, List, Dict, cast, Callable
+from typing import Mapping, Any, List, Dict, cast, Callable, Optional
 import json
 import shutil
 import zipfile
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from http_daemon import Session, log
 import traceback
+import threading
 
 os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
 
@@ -603,9 +604,99 @@ def unpack_submission(
         'title_clean': title_clean,
     }
 
-# def eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]]) -> None:
-#     thread = threading.Thread(target=eval_func, args=(params, session))
-#     xxx
+    
+
+class Job():
+    def __init__(self) -> None:
+        self.time = datetime.now()
+        self.results:Optional[Mapping[str,Any]] = None
+
+jobs:Dict[str,Dict[]] = {}
+
+# Make a redirect page that will check again in a few seconds
+def make_working_page(id:str) -> Mapping[str,Any]:
+    global jobs
+    job = jobs[id]
+    elapsed = datetime.now() - job.time
+
+    p:List[str] = []
+    p.append('<!DOCTYPE html>')
+    p.append('<html><head>')
+    p.append('<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">')
+    p.append(f'<meta http-equiv="Refresh" content="3; url=\'working.html?job={id}\'" />')
+    p.append('<style>')
+    p.append('body,center {')
+    p.append('  font-family: verdana, tahoma, geneva, sans-serif;')
+    p.append('  font-size: 24px;')
+    p.append('  background-color:#cacaca;')
+    p.append('}')
+    p.append('</style>')
+    p.append('</head>')
+    p.append('<body><table width="800px" align="center" style="background: #ffffff;"><tr><td>')
+    p.append('<img src="banner.png"><br>')
+    p.append('<br>Thank you. Your submission has been received, and is currently being tested.<br><br>')
+    p.append(f'Elapsed time: {elapsed.seconds} seconds')
+    p.append('<br><br><br><br></td></tr></table>')
+    p.append('<br><br><br><br>')
+    p.append('</body>')
+    p.append('</html>')
+    return {
+        'content': ''.join(p),
+    }
+
+# Either show the results (if they are ready) or tell the user we are
+# working on it and redirect to try again soon
+def get_results(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    global jobs
+    if not 'job' in params:
+        p:List[str] = []
+        page_start(p, session)
+        p.append('Error: Expected a "job" parameter.')
+        page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+    id = params['job']
+    if not id in jobs:
+        p:List[str] = []
+        page_start(p, session)
+        p.append(f'Error: job with id {id} not found!')
+        page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+    job = jobs[id]
+    if job.results is None:
+        return make_working_page(id)
+    return job.results
+
+# Remove any jobs that are really old
+def purge_dead_jobs() -> None:
+    global jobs
+    for id in jobs:
+        job = jobs[id]
+        if datetime.now() - job.time > timedelta(minutes=30):
+            del jobs[id]
+
+# This is the thread that evaluates a submission
+def eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]], id:str) -> None:
+    global jobs
+    the_job = jobs[id]
+    the_job.results = eval_func(params, session)
+
+# Makes a job id
+def make_random_id() -> str:
+    return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(10))
+
+# Starts the evaluation thread and tells the user we are working on it
+def launch_eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]]) -> Mapping[str,Any]:
+    global jobs
+    id = make_random_id()
+    jobs[id] = Job()
+    thread = threading.Thread(target=eval_thread, args=(params, session, eval_func, id))
+    thread.start()
+    purge_dead_jobs()
+    return make_working_page(id)
 
 # Consumes course_descs
 # Adds page makers for the submit pages to the page_makers dictionary
@@ -618,7 +709,7 @@ def generate_submit_and_receive_pages(
         submit_page_name = f'{course_desc["course_short"]}_{proj}_submit.html'
         receive_page_name = f'{course_desc["course_short"]}_{proj}_receive.html'
         def page_maker_factory(proj_short_name:str, submit_page:str, receive_page:str) -> Callable[[Mapping[str,Any],Session],Mapping[str,Any]]: # So make_submit_page can bind to the unique parameters of this function
-            def make_submit_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+            def make_submit_page(params: Mapping[str, Any], session: Session) -> Tuple[Mapping[str,Any],Mapping[str,Any]]:
                 return make_submission_page(
                     params,
                     session,
@@ -627,7 +718,12 @@ def generate_submit_and_receive_pages(
                     accounts,
                     submit_page,
                     receive_page,
+                ),
+                return launch_eval_thread(
+                    params,
+                    session,
+                    course_desc['projects'][proj]['evaluator']
                 )
-            return make_submit_page
-        page_makers[submit_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)
-        page_makers[receive_page_name] = course_desc['projects'][proj]['evaluator']
+        #page_makers[submit_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)
+        #page_makers[receive_page_name] = course_desc['projects'][proj]['evaluator']
+        page_makers[submit_page_name], page_makers[receive_page_name] = page_maker_factory(proj, submit_page_name, receive_page_name)

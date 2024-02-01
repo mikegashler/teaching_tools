@@ -33,6 +33,7 @@ def main() -> None:
         'game.html': banana_quest.make_game_page,
         'redirect.html': banana_quest.make_redirect_page,
         'log_out.html': autograder.make_log_out_page,
+        'working.html': autograder.get_results,
         'pf2_admin.html': pf2.admin_page,
         'dsa_admin.html': dsa.admin_page,
     }
