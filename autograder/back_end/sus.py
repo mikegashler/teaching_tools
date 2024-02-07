@@ -1,6 +1,7 @@
 from enum import Enum
 import os
 from typing import Dict, Mapping, List, Tuple, Set
+import sys
 
 # Uses bit-twiddling to represent a character set.
 # For example, if you construct with 'A-Za-z_0-9',
@@ -682,14 +683,25 @@ def most_suspicious_submissions(base_folder:str, tok_len:int=16) -> List[Tuple[s
             suspect_list.append((code[index_b][0], code[index_a][0], sum_suspiciousness / sum_rarity))
 
             print(f'Compared {i}/{total_pairs} pairs of folders')
-    
+
     # Sort by suspiciousness
     print()
     suspect_list.sort(key=lambda x:-x[2])
     return suspect_list
 
 if __name__ == '__main__':
-    suspects = most_suspicious_submissions('/home/mike/box/uark/paradigms/projects')
-    for i in range(len(suspects)):
-        sus = suspects[i]
-        print(f'{sus[2]*100:.2f}% of {os.path.basename(sus[0])} is in {os.path.basename(sus[1])}')
+    if len(sys.argv) < 2:
+        print('Usage:')
+        print('    let "student_folder" contain all the code from one student.')
+        print('    let "class_folder" contain all the "student_folder"s.')
+        print('')
+        print('Do:')
+        print('    python3 sus.py class_folder')
+        print('')
+        print('Example:')
+        print('    python3 sus.py .')
+    else:
+        suspects = most_suspicious_submissions(sys.argv[1])
+        for i in range(len(suspects)):
+            sus = suspects[i]
+            print(f'{sus[2]*100:.2f}% of {os.path.basename(sus[0])} is in {os.path.basename(sus[1])}')

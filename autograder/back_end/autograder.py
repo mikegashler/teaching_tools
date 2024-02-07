@@ -168,6 +168,10 @@ def receive_and_unpack_submission(params:Mapping[str, Any], course:str, project:
     _, extension = os.path.splitext(zipfilename)
     if not extension == '.zip':
         raise ValueError(f'Expected a file with the extension ".zip". Got "{extension}".')
+    if os.stat(zipfilename).st_size >= 2000000:
+        log(f'Received a file named {zipfilename} that was too big ({os.stat(zipfilename).st_size}). Deleting it and aborting.')
+        os.remove(zipfilename)
+        raise ValueError(f'Expected the zip to be less than 2MB.')
 
     # Make a folder for the submission
     t = datetime.now()
@@ -231,6 +235,10 @@ def receive_and_unpack_submission(params:Mapping[str, Any], course:str, project:
             for forbidden_extension in forbidden_extensions:
                 if ext == forbidden_extension:
                     raise ValueError(f'Your zip contains an unnecessary file: "{filename}". Please submit only your code and build script.')
+            if os.stat(os.path.join(path, filename)).st_size > 2000000:
+                msg =f'The file {filename} is too big. All files must be less than 2MB.'
+                log(msg)
+                raise ValueError(msg)
         file_count += len(files)
         if 'run.bash' in files:
             start_folder = path
@@ -563,9 +571,19 @@ def make_submission_page(
     p.append('<br>')
     p.append('Please upload your zip file:')
     p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
-    p.append('    <input type="file" name="filename">')
+    p.append('    <input type="file" id="file" name="filename">')
     p.append('    <input type="submit">')
     p.append('</form>')
+    p.append('<script>\n')
+    p.append('const uploadField = document.getElementById("file");\n')
+    p.append('uploadField.onchange = function() {\n')
+    p.append('    if(this.files[0].size > 2000000){\n')
+    p.append('       alert("That file is too big!");\n')
+    p.append('       this.value = "";\n')
+    p.append('    }\n')
+    p.append('}\n')
+    p.append('</script>')
+
     page_end(p)
     return {
         'content': ''.join(p),

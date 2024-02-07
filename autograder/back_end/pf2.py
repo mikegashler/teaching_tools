@@ -229,6 +229,8 @@ monkey
 narwhal
 ostrich
 pig
+
+2
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:

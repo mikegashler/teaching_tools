@@ -20,6 +20,11 @@ def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -51,6 +56,11 @@ def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -127,6 +137,11 @@ def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -169,6 +184,11 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -252,6 +272,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -310,6 +335,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -339,6 +369,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -368,6 +403,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -397,6 +437,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
@@ -426,6 +471,11 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
