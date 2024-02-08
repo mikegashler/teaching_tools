@@ -16,6 +16,7 @@ def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         args:List[str] = []
         input = '''1
 /var/www/autograder/test_data/simple.csv
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -51,7 +52,7 @@ def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         input = '''1
 /var/www/autograder/test_data/stats.csv
 2
-
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -132,7 +133,7 @@ def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         input = '''1
 /var/www/autograder/test_data/simple.csv
 2
-
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -180,6 +181,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 4
 0
 5
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -214,6 +216,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 4
 1
 5
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -238,6 +241,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 4
 2
 5
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -507,47 +511,47 @@ course_desc:Mapping[str,Any] = {
         },
         'proj3': {
             'title': 'Project 3',
-            'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=2, day=13, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj3,
         },
         'proj4': {
             'title': 'Project 4',
-            'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=2, day=20, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj4,
         },
         'proj5': {
             'title': 'Project 5',
-            'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=3, day=5, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj5,
         },
         'proj6': {
             'title': 'Project 6',
-            'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=3, day=12, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj6,
         },
         'proj7': {
             'title': 'Project 7',
-            'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=3, day=26, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj7,
         },
         'proj8': {
             'title': 'Project 8',
-            'due_time': datetime(year=2024, month=4, day=8, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=9, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj8,
         },
         'proj9': {
             'title': 'Project 9',
-            'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=16, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj9,
         },
         'proj10': {
             'title': 'Project 10',
-            'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=23, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj10,
         },
         'proj11': {
             'title': 'Project 11',
-            'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=30, hour=23, minute=59, second=59),
             'evaluator': evaluate_proj11,
         },
     },

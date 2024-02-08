@@ -54,7 +54,7 @@ def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: not debug mode, short list
+    # Test 1: not debug mode, exactly 8 items
     try:
         args:List[str] = []
         input = '''alpha
@@ -62,6 +62,9 @@ beta
 charlie
 delta
 epsilon
+flag
+gum
+hair
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
@@ -173,7 +176,10 @@ def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         input = '''1
 alpha
 beta
-gamma'''
+gamma
+
+0
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
@@ -199,7 +205,10 @@ gamma'''
         input = '''1
 alpha
 beta
-gamma'''
+gamma
+
+0
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
@@ -231,6 +240,7 @@ ostrich
 pig
 
 2
+0
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
@@ -275,6 +285,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 
 4
 
+0
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
@@ -396,6 +407,7 @@ urns
 wrist
 
 6
+0
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
@@ -440,10 +452,11 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: See if it produces the exactly correct output
+    # Test 1: See if the unit test passes
     try:
         args = ['quiet']
         input = '''7
+0
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
@@ -481,6 +494,7 @@ zebra
 
 8
 2
+0
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
@@ -526,7 +540,7 @@ zebra
     # Test 2: Sort a bigger list
     try:
         args = ['quiet']
-        input = '1\n' + ('xyz' * 1024) + '\n8\n'
+        input = '1\n' + ('xyz' * 1024) + '\n8\n0\n'
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
@@ -566,7 +580,9 @@ def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     try:
         args = ['quiet']
         input = '''Aloysius
-8'''
+8
+0
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
@@ -594,7 +610,9 @@ def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     try:
         args = ['quiet']
         input = '''Aloysius
-8'''
+8
+0
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
@@ -622,7 +640,9 @@ def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, A
     try:
         args = ['quiet']
         input = '''Aloysius
-8'''
+8
+0
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
@@ -650,7 +670,9 @@ def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, A
     try:
         args = ['quiet']
         input = '''Aloysius
-8'''
+8
+0
+'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
