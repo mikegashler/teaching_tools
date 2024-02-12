@@ -297,7 +297,7 @@ def page_start(p:List[str], session:Session) -> None:
     p.append('.code {')
     p.append('  color:#a0ffa0;')
     p.append('  background-color:#000000;')
-    p.append('  width:100%;')
+    p.append('  width:750px;')
     p.append('  overflow-x:scroll;')
     p.append('}')
     p.append('</style>')
