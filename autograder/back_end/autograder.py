@@ -297,8 +297,8 @@ def page_start(p:List[str], session:Session) -> None:
     p.append('.code {')
     p.append('  color:#a0ffa0;')
     p.append('  background-color:#000000;')
-    p.append('  width:auto;')
-    p.append('  white-space: pre-wrap;')
+    p.append('  width:100%;')
+    p.append('  overflow-x:scroll;')
     p.append('}')
     p.append('</style>')
     p.append('<script src="sha512.js"></script>')
@@ -475,6 +475,7 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
                     p.append(f',0')
                 else:
                     p.append(f',Due {due_time.year}-{due_time.month}-{due_time.day}')
+        p.append('\n')
     p.append('\n')
     p.append('</pre>')
     return ''.join(p)
