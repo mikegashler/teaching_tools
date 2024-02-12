@@ -27,7 +27,7 @@ import tempfile
 
 port = 0
 COOKIE_LEN = 12
-
+last_save_state_time = datetime.now()
 
 def make_random_id() -> str:
     return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(8))
@@ -143,6 +143,7 @@ def save_state() -> None:
 
 def load_state() -> None:
     global sessions
+    global last_save_state_time
     if os.path.exists('state.json'):
         with open('state.json', 'r') as f:
             server_state = json.loads(f.read())
@@ -153,6 +154,14 @@ def load_state() -> None:
         }
         log(f'no state.json file. Starting over from scratch')
     unmarshal_state(server_state)
+    last_save_state_time = datetime.now()
+
+def maybe_save_state() -> None:
+    global last_save_state_time
+    now_time = datetime.now()
+    if now_time - last_save_state_time > timedelta(minutes=15):
+        last_save_state_time = now_time
+        save_state()
 
 class MyRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, *args: Any) -> None:

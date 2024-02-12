@@ -282,9 +282,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 2
 /
 100
-
 4
-
 0
 '''
         output = autograder.run_submission(submission, args, input)
@@ -298,6 +296,38 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     if output.find('#///#   #') < 0:
         return autograder.reject_submission(session,
             'Flood fill did not work correctly. It should have filled the left-side box with slashes, but left the right-side box empty.',
+            args, input, output,
+        )
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''3
+###### ######
+#   #   #   #
+#       #   #
+    #   #   #
+## ##########
+
+5
+2
+2
+x
+100
+4
+0
+'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were compile errors.',
+            args, input, output,
+        )
+    if output.find('#xxx#xxx#   #') < 0:
+        return autograder.reject_submission(session,
+            'Flood fill did not work correctly. It should have filled the left two regions with "x"s, but left the right-most region empty.',
             args, input, output,
         )
 

@@ -4,12 +4,13 @@ import shutil
 import zipfile
 import os
 from datetime import datetime, timedelta
-from http_daemon import Session, log
+from http_daemon import Session, log, maybe_save_state
 import traceback
 import threading
 import random
 import string
 import sys
+from subprocess import STDOUT, check_output, SubprocessError, CalledProcessError
 
 os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
 
@@ -33,6 +34,21 @@ def add_students(names:List[str], accounts:Dict[str,Any], toks:int=7) -> None:
             'toks': toks,
         }
 
+launch_script_with_subprocess = '''#!/bin/bash
+
+# Make sure the script has unix line endings, and is executable
+sudo dos2unix -q ./run.bash
+sudo chmod 755 ./run.bash
+
+# Launch it
+./run.bash $* < _stdin.txt
+
+# Clean up some garbage
+find . -name ".mypy_cache" -exec rm -rf {} \;
+find . -name "__pycache__" -exec rm -rf {} \;
+exit 0
+'''
+
 launch_script_with_sandbox = '''#!/bin/bash
 set -e
 
@@ -49,7 +65,7 @@ sudo -u sandbox ./run.bash $* < _stdin.txt &
 
 # Start a time-out timer
 CHILD_PID=$!
-TIME_LIMIT=30
+TIME_LIMIT=8
 for (( i = 0; i < $TIME_LIMIT; i++ )); do
 	sleep 1
 
@@ -99,7 +115,7 @@ chmod 755 ./run.bash
 
 # Start a time-out timer
 CHILD_PID=$!
-TIME_LIMIT=30
+TIME_LIMIT=8
 for (( i = 0; i < $TIME_LIMIT; i++ )); do
 	sleep 1
 
@@ -147,17 +163,31 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
 
     # Put a launch script in the same folder as run.bash
     with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
-        f.write(launch_script_with_sandbox if sandbox else launch_script_without_sandbox)
+        f.write(launch_script_with_subprocess)
+        # f.write(launch_script_with_sandbox if sandbox else launch_script_without_sandbox)
 
-    # Execute the launch script
-    os.system(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)} > _stdout.txt 2> _stderr.txt')
+    # # Execute the launch script
+    # os.system(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)} > _stdout.txt 2> _stderr.txt')
 
-    # Read the output
-    with open(os.path.join(start_folder, '_stdout.txt'), 'r') as f:
-        stdout = f.read()
-    with open(os.path.join(start_folder, '_stderr.txt'), 'r') as f:
-        stderr = f.read()
-    return stdout + stderr
+    # # Read the output
+    # with open(os.path.join(start_folder, '_stdout.txt'), 'r') as f:
+    #     stdout = f.read()
+    # with open(os.path.join(start_folder, '_stderr.txt'), 'r') as f:
+    #     stderr = f.read()
+    # return stdout + stderr
+
+    try:
+        output = check_output(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=10)
+    except SubprocessError:
+        output = b"error: Timed out. (This usually indicates an endless loop in your code.)"
+    except CalledProcessError:
+        output = b"error: non-zero return code. (This is probably an error with the submission server.)"
+    except:
+        output = b"error: unrecognized error."
+        print('Unrecognized error:')
+        print(traceback.format_exc(), file=sys.stderr)
+    max_output_size = 2000000
+    return output[:max_output_size].decode()
 
 # Receives a submission. Unzips it. Checks for common problems.
 # Executes it, and returns the output as a string.
@@ -333,8 +363,8 @@ def accept_submission(
     page_start(p, session)
     p.append('<font color="green">Your submission passed all tests! Your assignment is complete. ')
     p.append(f'Your tentative score is {score}. ')
-    if days_late > 0:
-        p.append(f'({days_late} days late, {covered_days} of which were excused.) ')
+    if days_late + covered_days > 0:
+        p.append(f'({days_late + covered_days} days late, {covered_days} of which were excused.) ')
     p.append('<br><br>(Some assignments have parts that need to be checked manually. ')
     p.append('Also, some checks will be made to ensure that submissions were not just designed to fool the autograder. ')
     p.append('So this score may still be adjusted by the grader.)</font>')
@@ -385,6 +415,7 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
         if account['pw'] != params['password']:
             return make_login_page(params, session, dest_page, accounts, f'Incorrect password. (Please contact the instructor if you need to have your password reset.)')
         session.name = params['name']
+        maybe_save_state()
 
     # Make sure we are logged in
     if not session.logged_in():
@@ -419,6 +450,34 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
         }
 
     return {}
+
+def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:str) -> str:
+    p:List[str] = []
+    p.append('<pre class="code">')
+    p.append('Last Name,First Name')
+    for proj_id in course_desc['projects']:
+        proj = course_desc['projects'][proj_id]
+        p.append(f',{proj["title"]}')
+    p.append('\n')
+    for name in accounts:
+        if len(student) > 0 and name != student:
+            continue
+        acc = accounts[name]
+        p.append(name)
+        for proj_id in course_desc['projects']:
+            proj = course_desc['projects'][proj_id]
+            proj_title_clean = proj['title'].replace(' ', '_')
+            if proj_title_clean in acc:
+                p.append(f',{acc[proj_title_clean]}')
+            else:
+                due_time = proj['due_time']
+                if datetime.now() >= due_time:
+                    p.append(f',0')
+                else:
+                    p.append(f',Due {due_time.year}-{due_time.month}-{due_time.day}')
+    p.append('\n')
+    p.append('</pre>')
+    return ''.join(p)
 
 def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
     # Make sure the we are logged in as a TA
@@ -521,6 +580,9 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
+    # Show all the grades
+    p.append(make_grades(accounts, course_desc, ''))
+
     page_end(p)
     return {
         'content': ''.join(p),
@@ -552,7 +614,8 @@ def make_submission_page(
     if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
         p:List[str] = []
         page_start(p, session)
-        p.append(f'You have already received credit for {title}. There is no need to submit it again.')
+        p.append(f'You have already received credit for {title}. There is no need to submit it again. Here are your scores so far:<br>')
+        p.append(make_grades(accounts, course_desc, session.name))
         page_end(p)
         return {
             'content': ''.join(p),
@@ -663,6 +726,7 @@ class Job():
         self.time = datetime.now()
         self.results:Optional[Mapping[str,Any]] = None
 
+job_queue:List[Job] = []
 jobs:Dict[str,Job] = {}
 
 # Make a redirect page that will check again in a few seconds
@@ -742,8 +806,23 @@ def make_random_id() -> str:
     return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(10))
 
 # Starts the evaluation thread and tells the user we are working on it
-def launch_eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]]) -> Mapping[str,Any]:
+def launch_eval_thread(
+        params: Mapping[str, Any], 
+        session: Session, 
+        eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]],
+        submit_page:str, 
+        accounts:Dict[str,Any],
+        course_desc:Mapping[str,Any],
+) -> Mapping[str,Any]:
     global jobs
+
+    # Get the account
+    response = require_login(params, session, submit_page, accounts, course_desc)
+    if 'content' in response:
+        return response
+    account = accounts[session.name]
+
+    # Make the job
     id = make_random_id()
     jobs[id] = Job()
     thread = threading.Thread(target=eval_thread, args=(params, session, eval_func, id))
@@ -775,6 +854,9 @@ def page_maker_factory(
             params,
             session,
             course_desc['projects'][project_id]['evaluator'],
+            submit_page,
+            accounts,
+            course_desc,
         )
     return make_submit_page, make_receive_page
 
