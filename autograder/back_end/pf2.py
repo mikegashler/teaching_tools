@@ -71,7 +71,12 @@ hair
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('debug mode') >= 0:
@@ -185,7 +190,12 @@ gamma
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('Aloysius') >= 0:
@@ -290,7 +300,12 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('#///#   #') < 0:
@@ -322,7 +337,12 @@ x
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('#xxx#xxx#   #') < 0:
@@ -444,7 +464,12 @@ wrist
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     for word in ['in', 'ink', 'inkpots', 'inro', 'jink',
@@ -493,7 +518,12 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('passed') < 0:
@@ -531,7 +561,12 @@ zebra
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     words_in_order = ['zebra', 'monkey', 'alligator', 'pizza', 'cheese', 'salad']
@@ -618,7 +653,12 @@ def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('xxx') < 0:
@@ -648,7 +688,12 @@ def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('xxx') < 0:
@@ -678,7 +723,12 @@ def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, A
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('xxx') < 0:
@@ -708,7 +758,12 @@ def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, A
         return autograder.reject_submission(session, str(e))
     if output.find('error:') >= 0:
         return autograder.reject_submission(session,
-            'It looks like there were compile errors.',
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('xxx') < 0:

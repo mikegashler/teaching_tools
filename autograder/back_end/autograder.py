@@ -302,6 +302,25 @@ def page_start(p:List[str], session:Session) -> None:
     p.append('}')
     p.append('</style>')
     p.append('<script src="sha512.js"></script>')
+    p.append('<script>\n')
+    p.append('function get_session_id() {\n')
+    p.append('	let cookie = document.cookie;\n')
+    p.append('	const start_pos = cookie.indexOf("sid=") + 4;\n')
+    p.append('	if (start_pos < 0) {\n')
+    p.append('		console.log("expected a cookie");\n')
+    p.append('      return "";\n')
+    p.append('	}\n')
+    p.append('	const end_pos = cookie.indexOf(";", start_pos);\n')
+    p.append('	let sid;\n')
+    p.append('	if (end_pos >= 0) {\n')
+    p.append('		sid = cookie.substring(start_pos, end_pos);\n')
+    p.append('	} else {\n')
+    p.append('		sid = cookie.substring(start_pos);\n')
+    p.append('	}\n')
+    p.append('	return sid;\n')
+    p.append('}\n')
+    p.append('const g_session_id = get_session_id();\n')
+    p.append('</script>')
     p.append('</head>')
     p.append('<body><table width="800px" align="center" style="background: #ffffff;"><tr><td>')
     p.append('<img src="banner.png"><br>')
@@ -336,7 +355,6 @@ def reject_submission(
         output:str='', 
         post_message:str='') -> Mapping[str, Any]:
     p:List[str] = []
-    page_start(p, session)
     p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
     p.append(f'{message}<br><br>')
     if len(args) > 0:
@@ -347,9 +365,8 @@ def reject_submission(
     if len(post_message) > 0:
         p.append(post_message)
     p.append('Please fix the issue and resubmit.')
-    page_end(p)
     return {
-        'content': ''.join(p),
+        'results': ''.join(p),
     }
 
 def accept_submission(
@@ -360,7 +377,6 @@ def accept_submission(
         score:int
 ) -> Mapping[str,Any]:
     p:List[str] = []
-    page_start(p, session)
     p.append('<font color="green">Your submission passed all tests! Your assignment is complete. ')
     p.append(f'Your tentative score is {score}. ')
     if days_late + covered_days > 0:
@@ -368,9 +384,8 @@ def accept_submission(
     p.append('<br><br>(Some assignments have parts that need to be checked manually. ')
     p.append('Also, some checks will be made to ensure that submissions were not just designed to fool the autograder. ')
     p.append('So this score may still be adjusted by the grader.)</font>')
-    page_end(p)
     return {
-        'content': ''.join(p),
+        'results': ''.join(p),
     }
 
 
@@ -720,7 +735,7 @@ def unpack_submission(
         'title_clean': title_clean,
     }
 
-    
+
 
 class Job():
     def __init__(self) -> None:
@@ -731,60 +746,92 @@ job_queue:List[Job] = []
 jobs:Dict[str,Job] = {}
 
 # Make a redirect page that will check again in a few seconds
-def make_working_page(id:str) -> Mapping[str,Any]:
-    global jobs
-    job = jobs[id]
-    elapsed = datetime.now() - job.time
-
+def make_working_page(id:str, session: Session) -> Mapping[str,Any]:
     p:List[str] = []
-    p.append('<!DOCTYPE html>')
-    p.append('<html><head>')
-    p.append('<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">')
-    p.append(f'<meta http-equiv="Refresh" content="3; url=\'working.html?job={id}\'" />')
-    p.append('<style>')
-    p.append('body,center {')
-    p.append('  font-family: verdana, tahoma, geneva, sans-serif;')
-    p.append('  font-size: 24px;')
-    p.append('  background-color:#cacaca;')
-    p.append('}')
-    p.append('</style>')
-    p.append('</head>')
-    p.append('<body><table width="800px" align="center" style="background: #ffffff;"><tr><td>')
-    p.append('<img src="banner.png"><br>')
-    p.append('<br>Thank you. Your submission has been received, and is currently being tested.<br><br>')
-    p.append(f'Elapsed time: {elapsed.seconds} seconds')
-    p.append('<br><br><br><br></td></tr></table>')
-    p.append('<br><br><br><br>')
-    p.append('</body>')
-    p.append('</html>')
+    page_start(p, session)
+    p.append('<div id="content">\n')
+    p.append('<br>Thank you. Your submission has been received, and is currently being tested.<br><br><pre class="code" id="messages"></pre><br>')
+    p.append('</div>\n')
+    p.append('<script>\n')
+    p.append('let got_results = false;\n')
+    p.append('\n')
+    p.append('function receive_response(response) {\n')
+    p.append('  console.log(`Got response: ${JSON.stringify(response)}`);\n')
+    p.append('  if (response.results) {\n')
+    p.append('      got_results = true;\n')
+    p.append('      console.log(`Got content`);\n')
+    p.append('      let content_div = document.getElementById("content");\n')
+    p.append('      content_div.innerHTML = response.results;\n')
+    p.append('  } else if (response.message) {\n')
+    p.append('      let messages = document.getElementById("messages");\n')
+    p.append('      messages.innerHTML = messages.innerHTML + response.message + "\\n";\n')
+    p.append('  } else {\n')
+    p.append('      let msg = "Got a response with no content or message!";\n')
+    p.append('      console.log(msg);\n')
+    p.append('      let messages = document.getElementById("messages");\n')
+    p.append('      messages.innerHTML = messages.innerHTML + response.message + "\\n";\n')
+    p.append('  }\n')
+    p.append('}\n')
+    p.append('\n')
+    p.append('function receive_error(ex) {\n')
+    p.append('    console.log(`Caught a Javascript error: ${JSON.stringify(ex)}`);\n')
+    p.append('    let messages = document.getElementById("messages");\n')
+    p.append('    messages.innerHTML = messages.innerHTML + ex + "\\n";\n')
+    p.append('}\n')
+    p.append('\n')
+    p.append('function check_for_results() {\n')
+    p.append('  if (got_results) {\n')
+    p.append('      return;')
+    p.append('  }\n')
+    p.append('  console.log("Checking for results...");\n')
+    p.append('  fetch("get_results.html", {\n')
+    p.append('  	body: JSON.stringify({ id: "' + id + '" }),\n')
+    p.append('  	cache: "no-cache",\n')
+    p.append('  	headers: {\n')
+    p.append("  		'Content-Type': 'application/json',\n")
+    p.append("  		'Brownie': `sid=${g_session_id}`,\n")
+    p.append('  	},\n')
+    p.append('  	method: "POST",\n')
+    p.append('  }).then(response => {\n')
+    p.append('      return response.json();\n')
+    p.append('  }).then(response => {\n')
+    p.append('      receive_response(response);\n')
+    p.append('  }).catch(ex => {\n')
+    p.append('      receive_error(ex);\n')
+    p.append('  });\n')
+    p.append('}\n')
+    p.append('\n')
+    p.append('setInterval(check_for_results, 1500);\n')
+    p.append('</script>\n')
+    page_end(p)
     return {
         'content': ''.join(p),
     }
 
-# Either show the results (if they are ready) or tell the user we are
-# working on it and redirect to try again soon
+# This is called by AJAX POST from the make_working_page.
+# It returns a JSON object that indicates progress or results
 def get_results(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     global jobs
-    if not 'job' in params:
-        p:List[str] = []
-        page_start(p, session)
-        p.append('Error: Expected a "job" parameter.')
-        page_end(p)
+    log(f'in get_results, params={params}')
+    if not 'id' in params:
+        log('no id')
         return {
-            'content': ''.join(p),
+            'message': 'Expected a job id in the request'
         }
-    id = params['job']
+    id = params['id']
     if not id in jobs:
-        p = []
-        page_start(p, session)
-        p.append(f'Error: job with id {id} not found!')
-        page_end(p)
+        log('no job')
         return {
-            'content': ''.join(p),
+            'message': f'job with id {id} not found!'
         }
     job = jobs[id]
     if job.results is None:
-        return make_working_page(id)
+        elapsed = datetime.now() - job.time
+        log('not done')
+        return {
+            'message': f'Still working on it after {elapsed.seconds} seconds'
+        }
+    log(f'returning results: {job.results}')
     return job.results
 
 # Remove any jobs that are really old
@@ -829,7 +876,7 @@ def launch_eval_thread(
     thread = threading.Thread(target=eval_thread, args=(params, session, eval_func, id))
     thread.start()
     purge_dead_jobs()
-    return make_working_page(id)
+    return make_working_page(id, session)
 
 # Generates functions that handle submitting and receiving project submissions
 def page_maker_factory(

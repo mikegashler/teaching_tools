@@ -299,7 +299,14 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             content_len = int(self.headers.get('Content-Length') or '')
             post_body = self.rfile.read(content_len)
             if content_len > 0 and (post_body[0] == 123 or post_body[0] == 91 or post_body[0] == 34): # 123='{', 91='[', 34='"' 
-                params = json.loads(post_body)
+                try:
+                    params = json.loads(post_body)
+                except:
+                    if post_body == b'[object Object]':
+                        log(f'Error, the javascript side forgot to JSON-encode an object')
+                    else:
+                        log(f'failed to decode JSON: {post_body[:2048]!r}')
+                    params = {}
             else:
                 log(f'content_len={content_len}, post_body={str(post_body)}, path={self.path}')
                 q = urlparse.parse_qs(post_body.decode())
