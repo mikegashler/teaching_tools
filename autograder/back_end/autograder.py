@@ -801,7 +801,7 @@ def make_working_page(id:str, session: Session) -> Mapping[str,Any]:
     p.append('  });\n')
     p.append('}\n')
     p.append('\n')
-    p.append('setInterval(check_for_results, 1500);\n')
+    p.append('setInterval(check_for_results, 1000);\n')
     p.append('</script>\n')
     page_end(p)
     return {
