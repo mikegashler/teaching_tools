@@ -2,7 +2,9 @@ from typing import Mapping, Any, List, Dict, cast
 from datetime import datetime
 from http_daemon import Session, log
 from datetime import datetime
+from threading import Lock
 import autograder
+import sys
 
 def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
@@ -255,11 +257,11 @@ pig
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
-    narwhal_spot = output.find('narwhal')
-    elephant_spot = output.find('elephant')
+    narwhal_spot = output.rfind('narwhal')
+    elephant_spot = output.rfind('elephant')
     if narwhal_spot < 0 or elephant_spot < 0:
         return autograder.reject_submission(session,
-            'Some of the animals I pushed on the stack disappeared!',
+            'Expected the tear-down to print the lexicon in reverse order. But at least some of the animals I pushed on the stack were not printed!',
             args, input, output,
         )
     if elephant_spot < narwhal_spot:
@@ -845,22 +847,25 @@ except:
     accounts = {}
 
 
+accept_lock = Lock()
 
 def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
     # Give the student credit
-    account = submission['account']
-    days_late = submission['days_late']
-    title_clean = submission['title_clean']
-    covered_days = min(days_late, account["toks"])
-    account["toks"] -= covered_days
-    days_late -= covered_days
-    score = max(30, 100 - 3 * days_late)
-    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-    account[title_clean] = score
-    autograder.save_accounts(course_desc['accounts'], accounts)
+    with accept_lock:
+        account = submission['account']
+        days_late = submission['days_late']
+        title_clean = submission['title_clean']
+        covered_days = min(days_late, account["toks"])
+        days_late -= covered_days
+        score = max(30, 100 - 3 * days_late)
+        if not (title_clean in account): # to protect from multiple simultaneous accepts
+            log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+            account[title_clean] = score
+            account["toks"] -= covered_days
+            autograder.save_accounts(course_desc['accounts'], accounts)
 
-    # Make an acceptance page
-    return autograder.accept_submission(session, submission, days_late, covered_days, score)
+        # Make an acceptance page
+        return autograder.accept_submission(session, submission, days_late, covered_days, score)
 
 
 def admin_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:

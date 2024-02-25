@@ -538,6 +538,17 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         save_accounts(str(course_desc['accounts']), accounts)
         print(f'Updated token balance for {params["student"]} to {student_account["toks"]}')
 
+    # Set project score
+    if 'project' in params and 'score' in params and 'student' in params:
+        if not params['student'] in accounts:
+            return {
+                'content': f"Error, account for {params['student']} not found!"
+            }
+        student_account = accounts[params['student']]
+        student_account[params['project']] = int(params['score'])
+        save_accounts(str(course_desc['accounts']), accounts)
+        print(f'Updated score for {params["student"]} {params["project"]} to {params["score"]}')
+
     p:List[str] = []
     page_start(p, session)
 
@@ -593,6 +604,39 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('<input type="text" name="addtoks">')
     p.append('</td></tr>')
     p.append('<tr><td></td><td><input type="submit" value="Grant tokens">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    # Form to set project score
+    p.append('<h2>Set project score</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student to set score for:')
+    p.append('</td><td>')
+    p.append('<select name="student">')
+    for name in sorted(accounts):
+        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
+            p.append(f'<option name="{name}" value="{name}">{name}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td>')
+    p.append('Project to set score for:')
+    p.append('</td><td>')
+    p.append('<select name="project">')
+    for proj in course_desc['projects']:
+        title = course_desc['projects'][proj]['title']
+        title_clean = title.replace(' ', '_')
+        p.append(f'<option name="{title_clean}" value="{title_clean}">{title_clean}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td>')
+    p.append('Score to set:')
+    p.append('</td><td>')
+    p.append('<input type="text" name="score">')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Set score">')
     p.append('</td></tr></table>')
     p.append('</form>')
 
@@ -837,10 +881,11 @@ def get_results(params: Mapping[str, Any], session: Session) -> Mapping[str, Any
 # Remove any jobs that are really old
 def purge_dead_jobs() -> None:
     global jobs
-    for id in jobs:
-        job = jobs[id]
-        if datetime.now() - job.time > timedelta(minutes=30):
-            del jobs[id]
+    for id in jobs.keys():
+        if id in jobs:
+            job = jobs[id]
+            if datetime.now() - job.time > timedelta(minutes=30):
+                del jobs[id]
 
 # This is the thread that evaluates a submission
 def eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]], id:str) -> None:

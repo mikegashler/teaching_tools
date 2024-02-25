@@ -648,6 +648,7 @@ def most_suspicious_submissions(base_folder:str, tok_len:int=16) -> List[Tuple[s
     total_pairs = (len(folders) ** 2 - len(folders)) // 2
     i = 0
     suspect_list:List[Tuple[str,str,float]] = []
+    prev_perc = 0.
     for index_a in range(len(code)):
         set_a = code_to_tok_set(code[index_a][1], tok_len)
         if len(set_a) == 0:
@@ -682,11 +683,14 @@ def most_suspicious_submissions(base_folder:str, tok_len:int=16) -> List[Tuple[s
                 sum_rarity += rarity
             suspect_list.append((code[index_b][0], code[index_a][0], sum_suspiciousness / sum_rarity))
 
-            print(f'Compared {i}/{total_pairs} pairs of folders')
+            perc = i * 100 / total_pairs
+            if perc - prev_perc >= 0.5:
+                prev_perc = perc
+                print(f' {perc:.02f}%\r', end='')
 
     # Sort by suspiciousness
     print()
-    suspect_list.sort(key=lambda x:-x[2])
+    suspect_list.sort(key=lambda x:x[2])
     return suspect_list
 
 if __name__ == '__main__':
@@ -702,6 +706,9 @@ if __name__ == '__main__':
         print('    python3 sus.py .')
     else:
         suspects = most_suspicious_submissions(sys.argv[1])
+        if len(suspects) > 70:
+            print('Pruning the list to just the 20 most unique and 50 least unique pairs')
+            suspects = suspects[:20] + suspects[-50:]
         for i in range(len(suspects)):
             sus = suspects[i]
             print(f'{sus[2]*100:.2f}% of {os.path.basename(sus[0])} is in {os.path.basename(sus[1])}')

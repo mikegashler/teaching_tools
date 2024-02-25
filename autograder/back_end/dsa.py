@@ -2,8 +2,19 @@ from typing import Mapping, Any, List, Dict, cast
 from datetime import datetime
 from http_daemon import Session, log
 from datetime import datetime
+from threading import Lock
 import autograder
 import sys
+import re
+
+# Returns the first number in the string.
+# Throws if there is not one.
+def next_num(s:str) -> float:
+    results = re.search(f'[-+\d.e]+', s)
+    if results:
+        return float(results.group())
+    else:
+        raise ValueError('No number found')
 
 def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
@@ -203,7 +214,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         if i > 0:
             if prev >= pos:
                 return autograder.reject_submission(session,
-                    'The sorted order came out wrong. Did you sort correctly?',
+                    f'Expected the order to be sorted according to the smart_compare custom comparator. Got some other order.',
                     args, input, output
                 )
         prev = pos
@@ -267,11 +278,16 @@ def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: See if it prints the contents of a csv file when loaded
+    # Test 1: Do a query
     try:
         args:List[str] = []
-        input = '''1
-xxx
+        input = '''6
+/var/www/autograder/test_data/simple.csv
+7
+0
+doughnut
+fish
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -286,10 +302,77 @@ xxx
             'It looks like an error was raised.',
             args, input, output
         )
-    if output.find('xxx') < 0:
+    brown_index = output.find('brown')
+    if brown_index < 0:
         return autograder.reject_submission(session,
-            'Could not find xxx',
+            'Expected the row with doughnut to appear in the output',
         args, input, output
+        )
+    white_index = output.find('white')
+    if white_index < 0:
+        return autograder.reject_submission(session,
+            'Expected the row with eggs to appear in the output',
+        args, input, output
+        )
+    if white_index < brown_index:
+        return autograder.reject_submission(session,
+            'Expected doughnut to come before eggs',
+        args, input, output
+        )
+    fish_index = output.find('fish')
+    if fish_index >= 0:
+        return autograder.reject_submission(session,
+            'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
+        args, input, output
+        )
+    carrot_index = output.find('carrot')
+    if carrot_index >= 0:
+        return autograder.reject_submission(session,
+            'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
+        args, input, output
+        )
+
+    # Test 2: Do another query
+    try:
+        args = []
+        input = '''6
+/var/www/autograder/test_data/simple.csv
+7
+2
+2
+4
+0
+'''
+        output = autograder.run_submission(submission, args, input, False)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
+    if output.find('Traceback (most') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like an error was raised.',
+            args, input, output
+        )
+    carrot_pos = output.find('carrot')
+    if carrot_pos < 0:
+        return autograder.reject_submission(session,
+            'Expected the carrot row to be in the output.',
+            args, input, output
+        )
+    fish_pos = output.find('fish')
+    if fish_pos < 0:
+        return autograder.reject_submission(session,
+            'Expected the fish row to be in the output.',
+            args, input, output
+        )
+    eggs_pos = output.find('eggs')
+    if eggs_pos >= 0:
+        return autograder.reject_submission(session,
+            'Did not expect the eggs row to be in the output.',
+            args, input, output
         )
 
     # Accept the submission
@@ -305,19 +388,36 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     try:
         args:List[str] = []
         input = '''1
-xxx
+/var/www/autograder/test_data/corr.csv
+8
+4
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
+    if output.find('error: ') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there are errors.',
+            args, input, output
+        )
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(session,
             'It looks like an error was raised.',
             args, input, output
         )
-    if output.find('xxx') < 0:
+    attr0_pos = output.rfind('random1')
+    attr1_pos = output.rfind('predictive')
+    attr2_pos = output.rfind('random2')
+    attr3_pos = output.rfind('random3')
+    if attr0_pos < 0 or attr1_pos < 0 or attr2_pos < 0 or attr3_pos < 0:
         return autograder.reject_submission(session,
-            'Could not find xxx',
+            'One or more of the column names did not appear in your output. You are supposed to drop each column, and print its name as you do.',
+        args, input, output
+        )
+    if attr1_pos < attr0_pos or attr1_pos < attr2_pos or attr1_pos < attr3_pos:
+        return autograder.reject_submission(session,
+            '"predictive" should have been the last column to be dropped (because it is the most predictive of the "target" column). However, it looks like one of the other column names occurs later in your output.',
         args, input, output
         )
 
@@ -333,8 +433,10 @@ def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
-        input = '''1
-xxx
+        input = '''9
+/var/www/autograder/test_data/pca.csv
+10
+0
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -349,9 +451,52 @@ xxx
             'It looks like an error was raised.',
             args, input, output
         )
-    if output.find('xxx') < 0:
+    zero_colon_pos = output.rfind('0: ')
+    five_colon_pos = output.rfind('5: ')
+    six_colon_pos = output.rfind('6: ')
+    seven_colon_pos = output.rfind('7: ')
+    eight_colon_pos = output.rfind('8: ')
+    if eight_colon_pos >= 0:
         return autograder.reject_submission(session,
-            'Could not find xxx',
+            'There should only be 8 dimensions in the Numpy representation of this data, but your output indicates that it found more than 8 principal components.',
+        args, input, output
+        )
+    if seven_colon_pos < 0:
+        return autograder.reject_submission(session,
+            'There should be 8 dimensions in the Numpy representation of this data, but your output indicates that it found fewer than 8 principal components.',
+        args, input, output
+        )
+    zero_eig = next_num(output[zero_colon_pos + 3:])
+    five_eig = next_num(output[five_colon_pos + 3:])
+    six_eig = next_num(output[six_colon_pos + 3:])
+    if zero_eig > 50.:
+        return autograder.reject_submission(session,
+            'Your first root-eigenvalue is too big. Did you center and standardize the columns before computing eigenvalues?',
+        args, input, output
+        )
+    if zero_eig > 5.:
+        return autograder.reject_submission(session,
+            'Your first root-eigenvalue is too big. Did you center the columns before computing eigenvalues?',
+        args, input, output
+        )
+    if zero_eig > 1.6:
+        return autograder.reject_submission(session,
+            'Your first root-eigenvalue is too big. Did you standardize the columns before computing eigenvalues?',
+        args, input, output
+        )
+    if zero_eig < 1.1:
+        return autograder.reject_submission(session,
+            'Your first root-eigenvalue is too small.',
+        args, input, output
+        )
+    if five_eig < 0.8 or five_eig > 1.2:
+        return autograder.reject_submission(session,
+            'Your fifth root-eigenvalue is incorrect.',
+        args, input, output
+        )
+    if six_eig > 0.2:
+        return autograder.reject_submission(session,
+            'Your sixth root-eigenvalue is too large.',
         args, input, output
         )
 
@@ -563,21 +708,26 @@ except:
     print('*** FAILED TO LOAD DSA ACCOUNTS! Starting an empty file!!!')
     accounts = {}
 
+
+accept_lock = Lock()
+
 def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
     # Give the student credit
-    account = submission['account']
-    days_late = submission['days_late']
-    title_clean = submission['title_clean']
-    covered_days = min(days_late, account["toks"])
-    account["toks"] -= covered_days
-    days_late -= covered_days
-    score = max(30, 100 - 3 * days_late)
-    log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
-    account[title_clean] = score
-    autograder.save_accounts(course_desc['accounts'], accounts)
+    with accept_lock:
+        account = submission['account']
+        days_late = submission['days_late']
+        title_clean = submission['title_clean']
+        covered_days = min(days_late, account["toks"])
+        days_late -= covered_days
+        score = max(30, 100 - 3 * days_late)
+        if not (title_clean in account): # to protect from multiple simultaneous accepts
+            log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+            account[title_clean] = score
+            account["toks"] -= covered_days
+            autograder.save_accounts(course_desc['accounts'], accounts)
 
-    # Make an acceptance page
-    return autograder.accept_submission(session, submission, days_late, covered_days, score)
+        # Make an acceptance page
+        return autograder.accept_submission(session, submission, days_late, covered_days, score)
 
 
 def admin_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
