@@ -647,56 +647,84 @@ course_desc:Mapping[str,Any] = {
         'proj1': {
             'title': 'Project 1',
             'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj1,
         },
         'proj2': {
             'title': 'Project 2',
             'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj2,
         },
         'proj3': {
             'title': 'Project 3',
             'due_time': datetime(year=2024, month=2, day=13, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj3,
         },
         'proj4': {
             'title': 'Project 4',
             'due_time': datetime(year=2024, month=2, day=20, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj4,
+        },
+        'midterm1': {
+            'title': 'Midterm 1',
+            'due_time': datetime(year=2024, month=2, day=26, hour=23, minute=59, second=59),
+            'weight': 20,
+            'points': 90,
         },
         'proj5': {
             'title': 'Project 5',
             'due_time': datetime(year=2024, month=3, day=5, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj5,
         },
         'proj6': {
             'title': 'Project 6',
             'due_time': datetime(year=2024, month=3, day=12, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj6,
         },
         'proj7': {
             'title': 'Project 7',
             'due_time': datetime(year=2024, month=3, day=26, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj7,
         },
         'proj8': {
             'title': 'Project 8',
             'due_time': datetime(year=2024, month=4, day=9, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj8,
         },
         'proj9': {
             'title': 'Project 9',
             'due_time': datetime(year=2024, month=4, day=16, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj9,
         },
         'proj10': {
             'title': 'Project 10',
             'due_time': datetime(year=2024, month=4, day=23, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj10,
         },
         'proj11': {
             'title': 'Project 11',
             'due_time': datetime(year=2024, month=4, day=30, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 3.6364,
             'evaluator': evaluate_proj11,
         },
     },
@@ -729,6 +757,8 @@ def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[s
         # Make an acceptance page
         return autograder.accept_submission(session, submission, days_late, covered_days, score)
 
+def view_scores_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
+    return autograder.view_scores_page(params, session, 'dsa_view_scores.html', accounts, course_desc)
 
 def admin_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     return autograder.make_admin_page(params, session, 'dsa_admin.html', accounts, course_desc)

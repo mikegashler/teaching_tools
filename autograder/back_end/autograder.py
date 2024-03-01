@@ -467,33 +467,89 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
     return {}
 
 def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:str) -> str:
+    now_time = datetime.now()
+    t:List[str] = []
     p:List[str] = []
     p.append('<pre class="code">')
+
+    # Row 1
+    t.append('<table border="1" style="overflow-x:scroll; width:700px; display:block;"><tr><td>Last Name</td><td>First Name</td>')
     p.append('Last Name,First Name')
     for proj_id in course_desc['projects']:
         proj = course_desc['projects'][proj_id]
-        p.append(f',{proj["title"]}')
+        proj_title = proj["title"]
+        t.append(f'<td>{proj_title}</td>')
+        p.append(f',{proj_title}')
+    t.append('<td>Grade</td></tr>\n')
+    p.append(',Grade')
     p.append('\n')
+
+    # Row 2
+    t.append('<tr><td></td><td>Weight</td>')
+    p.append(',Weight')
+    sum_weight = 0.
+    for proj_id in course_desc['projects']:
+        proj = course_desc['projects'][proj_id]
+        weight = proj["weight"]
+        due_time = proj['due_time']
+        if now_time < due_time:
+            weight = 0.
+        sum_weight += weight
+        t.append(f'<td>{weight}</td>')
+        p.append(f',{weight}')
+    p.append(f'<td>{sum_weight}</td></tr>\n')
+    p.append(f',=sum(c2:{chr(98+len(course_desc["projects"]))}2)')
+    p.append('\n')
+
+    # Row 3
+    t.append('<tr><td></td><td>Possible</td>')
+    p.append(',Points possible')
+    for proj_id in course_desc['projects']:
+        proj = course_desc['projects'][proj_id]
+        proj_points = proj["points"]
+        t.append(f'<td>{proj_points}</td>')
+        p.append(f',{proj_points}')
+    t.append('<td></td></tr>\n')
+    p.append('\n')
+
+    # Rows 4 on
+    row_index = 4
     for name in accounts:
         if len(student) > 0 and name != student:
             continue
         acc = accounts[name]
+        split_name = name.split(',')
+        t.append(f'<tr><td>{split_name[0]}</td><td>{split_name[1]}</td>')
         p.append(name)
+        eq = '=(0'
+        col_index = 99 # 'c'
+        weighted_points = 0.
         for proj_id in course_desc['projects']:
             proj = course_desc['projects'][proj_id]
+            weight = proj["weight"]
+            proj_points = proj["points"]
             proj_title_clean = proj['title'].replace(' ', '_')
-            if proj_title_clean in acc:
-                p.append(f',{acc[proj_title_clean]}')
+            due_time = proj['due_time']
+            score = float(acc[proj_title_clean] if proj_title_clean in acc else 0.)
+            if proj_title_clean in acc or now_time >= due_time:
+                t.append(f'<td>{score}</td>')
+                p.append(f',{score}')
+                weighted_points += weight * score / proj_points
+                eq += f'+{chr(col_index)}2*{chr(col_index)}{row_index}/{chr(col_index)}3'
             else:
-                due_time = proj['due_time']
-                if datetime.now() >= due_time:
-                    p.append(f',0')
-                else:
-                    p.append(f',Due {due_time.year}-{due_time.month}-{due_time.day}')
+                due_str = f'Due {due_time.year}-{due_time.month}-{due_time.day}'
+                t.append(f'<td>{due_str}</td>')
+                p.append(f',{due_str}')
+            col_index += 1
+        t.append(f'<td>{weighted_points * 100. / sum_weight}</td></tr>\n')
+        eq += f')*100/{chr(col_index)}2'
+        p.append(f',{eq}')
         p.append('\n')
+        row_index += 1
+    t.append('</table>\n')
     p.append('\n')
     p.append('</pre>')
-    return ''.join(p)
+    return f'{"".join(t)}<br><br>And here is a CSV version suitable for pasting in a spreadsheet program:<br>{"".join(p)}'
 
 def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
     # Make sure the we are logged in as a TA
@@ -549,6 +605,36 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         save_accounts(str(course_desc['accounts']), accounts)
         print(f'Updated score for {params["student"]} {params["project"]} to {params["score"]}')
 
+    # Set many scores
+    if 'project' in params and 'scores' in params:
+        rows = params['scores'].split('\n')
+        for row in rows:
+            cells = row.split(',')
+            if len(cells) < 1:
+                continue
+            elif len(cells) != 3:
+                return {
+                    'content': f"Error on the line {cells}, expected 3 columns"
+                }
+            student_name = cells[0] + ',' + cells[1]
+            if not student_name in accounts:
+                return {
+                    'content': f"Error, no student named {student_name}"
+                }
+            try:
+                int(cells[2])
+            except:
+                return {
+                    'content': f"Error on the line {cells}, expected the third column to be an integer"
+                }
+        for row in rows:
+            cells = row.split(',')
+            if len(cells) < 1:
+                continue
+            student_name = cells[0] + ',' + cells[1]
+            accounts[student_name][params['project']] = int(cells[2])
+        save_accounts(str(course_desc['accounts']), accounts)
+
     p:List[str] = []
     page_start(p, session)
 
@@ -584,7 +670,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Form to grant late tokents
+    # Form to grant late tokens
     p.append('<h2>Grant late tokens</h3>')
     p.append(f'<form action="{dest_page}"')
     p.append(' method="post">')
@@ -594,8 +680,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td><td>')
     p.append('<select name="student">')
     for name in sorted(accounts):
-        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
-            p.append(f'<option name="{name}" value="{name}">{name}</option>')
+        p.append(f'<option name="{name}" value="{name}">{name}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
@@ -617,8 +702,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td><td>')
     p.append('<select name="student">')
     for name in sorted(accounts):
-        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
-            p.append(f'<option name="{name}" value="{name}">{name}</option>')
+        p.append(f'<option name="{name}" value="{name}">{name}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
@@ -640,9 +724,51 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
+    # Form to set many project scores
+    p.append('<h2>Set many project scores</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Project to set score for:')
+    p.append('</td><td>')
+    p.append('<select name="project">')
+    for proj in course_desc['projects']:
+        title = course_desc['projects'][proj]['title']
+        title_clean = title.replace(' ', '_')
+        p.append(f'<option name="{title_clean}" value="{title_clean}">{title_clean}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td>')
+    p.append('CSV data: (last-name, first-name, score)')
+    p.append('</td><td>')
+    p.append('<textarea name="scores"></textarea>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Set many scores">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
     # Show all the grades
     p.append(make_grades(accounts, course_desc, ''))
 
+    page_end(p)
+    return {
+        'content': ''.join(p),
+    }
+
+def view_scores_page(
+    params:Mapping[str, Any],
+    session:Session,
+    dest_page:str,
+    accounts:Dict[str,Any],
+    course_desc:Mapping[str,Any],
+) -> Mapping[str, Any]:
+    response = require_login(params, session, dest_page, accounts, course_desc)
+    if 'content' in response:
+        return response
+    p:List[str] = []
+    page_start(p, session)
+    p.append(make_grades(accounts, course_desc, session.name))
     page_end(p)
     return {
         'content': ''.join(p),
@@ -670,42 +796,40 @@ def make_submission_page(
     due_time = desc['due_time']
     course_name = course_desc['course_long']
 
-    # Make sure the student still needs to submit this project
-    if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
-        p:List[str] = []
-        page_start(p, session)
-        p.append(f'You have already received credit for {title}. There is no need to submit it again. Here are your scores so far:<br>')
-        p.append(make_grades(accounts, course_desc, session.name))
-        page_end(p)
-        return {
-            'content': ''.join(p),
-        }
-
-    # Make the upload form
-    p = []
+    p:List[str] = []
     page_start(p, session)
     p.append(f'<big><b>{course_name}</b></big><br>')
     p.append(f'<big>Submit <b>{title}</b></big><br>')
-    p.append(f'Due time: {due_time}<br>')
-    now_time = datetime.now()
-    p.append(f'Now time: {now_time}<br>')
-    tokens = account["toks"]
-    p.append(f'Your late token balance: {tokens}<br>')
-    p.append('<br>')
-    p.append('Please upload your zip file:')
-    p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
-    p.append('    <input type="file" id="file" name="filename">')
-    p.append('    <input type="submit">')
-    p.append('</form>')
-    p.append('<script>\n')
-    p.append('const uploadField = document.getElementById("file");\n')
-    p.append('uploadField.onchange = function() {\n')
-    p.append('    if(this.files[0].size > 2000000){\n')
-    p.append('       alert("That file is too big!");\n')
-    p.append('       this.value = "";\n')
-    p.append('    }\n')
-    p.append('}\n')
-    p.append('</script>')
+
+    # Make sure the student still needs to submit this project
+    if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
+        p.append(f'You have already received credit for {title}. There is no need to submit it again.')
+    else:
+        # Make the upload form
+        p.append(f'Due time: {due_time}<br>')
+        now_time = datetime.now()
+        p.append(f'Now time: {now_time}<br>')
+        tokens = account["toks"]
+        p.append(f'Your late token balance: {tokens}<br>')
+        p.append('<br>')
+        p.append('Please upload your zip file:')
+        p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
+        p.append('    <input type="file" id="file" name="filename">')
+        p.append('    <input type="submit">')
+        p.append('</form>')
+        p.append('<script>\n')
+        p.append('const uploadField = document.getElementById("file");\n')
+        p.append('uploadField.onchange = function() {\n')
+        p.append('    if(this.files[0].size > 2000000){\n')
+        p.append('       alert("That file is too big!");\n')
+        p.append('       this.value = "";\n')
+        p.append('    }\n')
+        p.append('}\n')
+        p.append('</script>')
+
+    # Make the view scores form
+    p.append('<br><br>')
+    p.append(f'<a href="{course_desc["course_short"]}_view_scores.html">View your scores</a><br>')
 
     page_end(p)
     return {
@@ -881,7 +1005,7 @@ def get_results(params: Mapping[str, Any], session: Session) -> Mapping[str, Any
 # Remove any jobs that are really old
 def purge_dead_jobs() -> None:
     global jobs
-    for id in jobs.keys():
+    for id in list(jobs.keys()):
         if id in jobs:
             job = jobs[id]
             if datetime.now() - job.time > timedelta(minutes=30):
@@ -913,7 +1037,6 @@ def launch_eval_thread(
     response = require_login(params, session, submit_page, accounts, course_desc)
     if 'content' in response:
         return response
-    account = accounts[session.name]
 
     # Make the job
     id = make_random_id()
@@ -928,7 +1051,6 @@ def page_maker_factory(
         proj_short_name:str, 
         submit_page:str, 
         receive_page:str, 
-        project_id:str,
         course_desc:Mapping[str,Any],
         accounts:Dict[str,Any],
 ) -> Tuple[Callable[[Mapping[str,Any],Session],Mapping[str,Any]],Callable[[Mapping[str,Any],Session],Mapping[str,Any]]]:
@@ -946,7 +1068,7 @@ def page_maker_factory(
         return launch_eval_thread(
             params,
             session,
-            course_desc['projects'][project_id]['evaluator'],
+            course_desc['projects'][proj_short_name]['evaluator'],
             submit_page,
             accounts,
             course_desc,
@@ -962,13 +1084,13 @@ def generate_submit_and_receive_pages(
         accounts:Dict[str,Any],
 ) -> None:
     for proj in course_desc['projects']:
-        submit_page_name = f'{course_desc["course_short"]}_{proj}_submit.html'
-        receive_page_name = f'{course_desc["course_short"]}_{proj}_receive.html'
-        page_makers[submit_page_name], page_makers[receive_page_name] = page_maker_factory(
-            proj, 
-            submit_page_name, 
-            receive_page_name, 
-            proj,
-            course_desc,
-            accounts,
-        )
+        if 'evaluator' in course_desc['projects'][proj]:
+            submit_page_name = f'{course_desc["course_short"]}_{proj}_submit.html'
+            receive_page_name = f'{course_desc["course_short"]}_{proj}_receive.html'
+            page_makers[submit_page_name], page_makers[receive_page_name] = page_maker_factory(
+                proj, 
+                submit_page_name, 
+                receive_page_name, 
+                course_desc,
+                accounts,
+            )

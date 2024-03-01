@@ -34,7 +34,9 @@ def main() -> None:
         'redirect.html': banana_quest.make_redirect_page,
         'log_out.html': autograder.make_log_out_page,
         'get_results.html': autograder.get_results,
+        'pf2_view_scores.html': pf2.view_scores_page,
         'pf2_admin.html': pf2.admin_page,
+        'dsa_view_scores.html': dsa.view_scores_page,
         'dsa_admin.html': dsa.admin_page,
     }
     autograder.generate_submit_and_receive_pages(page_makers, pf2.course_desc, pf2.accounts)
