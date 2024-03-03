@@ -11,6 +11,7 @@ import random
 import string
 import sys
 from subprocess import STDOUT, check_output, SubprocessError, CalledProcessError
+import diff
 
 os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
 
@@ -497,7 +498,7 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
         sum_weight += weight
         t.append(f'<td>{weight}</td>')
         p.append(f',{weight}')
-    p.append(f'<td>{sum_weight}</td></tr>\n')
+    t.append(f'<td><!--{sum_weight}--></td></tr>\n')
     p.append(f',=sum(c2:{chr(98+len(course_desc["projects"]))}2)')
     p.append('\n')
 
@@ -519,7 +520,7 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
             continue
         acc = accounts[name]
         split_name = name.split(',')
-        t.append(f'<tr><td>{split_name[0]}</td><td>{split_name[1]}</td>')
+        t.append(f'<tr><td>{split_name[0] if len(split_name) > 0 else "???"}</td><td>{split_name[1] if len(split_name) > 1 else "???"}</td>')
         p.append(name)
         eq = '=(0'
         col_index = 99 # 'c'
@@ -551,6 +552,32 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
     p.append('</pre>')
     return f'{"".join(t)}<br><br>And here is a CSV version suitable for pasting in a spreadsheet program:<br>{"".join(p)}'
 
+def canonicalize_names(rows:List[str], student_names:List[str]) -> str:
+    indexes = [ i for i in range(len(rows)) ]
+    output = ['\n'] * len(rows)
+    while len(rows) > 0 and len(student_names) > 0:
+        best_i = 0
+        best_j = 0
+        best_dist = 1000000
+        for i in range(len(rows)):
+            for j in range(len(student_names)):
+                dist = diff.str_dist(rows[i], student_names[j])
+                if dist < best_dist:
+                    best_dist = dist
+                    best_i = i
+                    best_j = j
+        index = indexes[best_i]
+        output[index] = rows[best_i].strip() + ',' + student_names[best_j]
+        del rows[best_i]
+        del indexes[best_i]
+        del student_names[best_j]
+    while len(rows) > 0:
+        index = indexes[0]
+        output[index] = rows[0] + ',???'
+        del rows[0]
+        del indexes[0]
+    return '\n'.join(output)
+
 def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
     # Make sure the we are logged in as a TA
     response = require_login(params, session, dest_page, accounts, course_desc)
@@ -561,6 +588,9 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         return {
             'content': '403 Forbidden'
         }
+
+    p:List[str] = []
+    page_start(p, session)
 
     # Add a new student
     if 'newstudent' in params:
@@ -635,8 +665,11 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
             accounts[student_name][params['project']] = int(cells[2])
         save_accounts(str(course_desc['accounts']), accounts)
 
-    p:List[str] = []
-    page_start(p, session)
+    # Canonicalize names
+    if 'student_names' in params:
+        rows = params['student_names'].split('\n')
+        output = '<br><pre class="code">' + canonicalize_names(rows, list(accounts.keys())) + '</pre><br><br>'
+        p.append(output)
 
     # Form to reset a password
     p.append('<h2>Reset a student\'s password</h3>')
@@ -740,11 +773,27 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
-    p.append('CSV data: (last-name, first-name, score)')
+    p.append('CSV data:<br>(last-name, first-name, score)')
     p.append('</td><td>')
     p.append('<textarea name="scores"></textarea>')
     p.append('</td></tr>')
     p.append('<tr><td></td><td><input type="submit" value="Set many scores">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    # Form to identify names
+    p.append('<h2>Identify names</h3>')
+    p.append('<p>Paste a comma-separated list of student names below.')
+    p.append('I will try to identify them and canonicalize them with my records.</p>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student names:<br>(last-name, first-name)')
+    p.append('</td><td>')
+    p.append('<textarea name="student_names"></textarea>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Canonicalize">')
     p.append('</td></tr></table>')
     p.append('</form>')
 
