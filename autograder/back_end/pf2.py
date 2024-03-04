@@ -491,7 +491,7 @@ wrist
     for word in ['salad', 'salmon', 'taco', 'wrist', 'six']:
         if output.find(word) >= 0:
             return autograder.reject_submission(session,
-                f'Found the invalid word "{word}".',
+                f'Found the invalid word "{word}". (Make sure you are not printing all the words in your lexicon. That will cause the autograder to think you are finding them in the CharMatrix.)',
                 args, input, output,
             )
     if output.find('porn') >= 0:

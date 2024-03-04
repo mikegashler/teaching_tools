@@ -160,7 +160,7 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
     start_folder = submission['folder']
     with open(os.path.join(start_folder, '_stdin.txt'), 'w') as f:
         f.write(input)
-        f.write('\n\n\n\n\n\n\n\n') # Add a few newlines to flush any superfluous input prompts
+        f.write('\n\n0\n\n0\n\n0\n\n') # Add a few extra lines to flush any superfluous input prompts
 
     # Put a launch script in the same folder as run.bash
     with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
@@ -178,7 +178,7 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
     # return stdout + stderr
 
     try:
-        output = check_output(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=10)
+        output = check_output(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
     except SubprocessError:
         output = b"error: Timed out. (This usually indicates an endless loop in your code.)"
     except CalledProcessError:
