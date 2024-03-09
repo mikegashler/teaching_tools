@@ -362,7 +362,7 @@ def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     if not 'succeeded' in submission or not submission['succeeded']:
         return cast(Mapping[str,Any], submission['page'])
 
-    # Test 1: See if it produces the exactly correct output
+    # Test 1: Test Boggle output
     try:
         args = ['quiet']
         input = '''3
@@ -372,6 +372,7 @@ qrst
 uvwx
 
 1
+aaaaaaaa
 in
 ink
 inkpot
@@ -472,6 +473,11 @@ wrist
     if output.find('segmentation fault') >= 0:
         return autograder.reject_submission(session,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
+            args, input, output,
+        )
+    if output.find('aaaaaaaa') >= 0:
+        return autograder.reject_submission(session,
+            f'When the "quiet" flag is used, you are not supposed to print all the words in your lexicon.',
             args, input, output,
         )
     for word in ['in', 'ink', 'inkpots', 'inro', 'jink',

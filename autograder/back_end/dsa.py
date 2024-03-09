@@ -306,30 +306,30 @@ fish
     if brown_index < 0:
         return autograder.reject_submission(session,
             'Expected the row with doughnut to appear in the output',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     white_index = output.find('white')
     if white_index < 0:
         return autograder.reject_submission(session,
             'Expected the row with eggs to appear in the output',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if white_index < brown_index:
         return autograder.reject_submission(session,
             'Expected doughnut to come before eggs',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     fish_index = output.find('fish')
     if fish_index >= 0:
         return autograder.reject_submission(session,
             'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     carrot_index = output.find('carrot')
     if carrot_index >= 0:
         return autograder.reject_submission(session,
             'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Test 2: Do another query
@@ -360,19 +360,19 @@ fish
     if carrot_pos < 0:
         return autograder.reject_submission(session,
             'Expected the carrot row to be in the output.',
-            args, input, output
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     fish_pos = output.find('fish')
     if fish_pos < 0:
         return autograder.reject_submission(session,
             'Expected the fish row to be in the output.',
-            args, input, output
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     eggs_pos = output.find('eggs')
     if eggs_pos >= 0:
         return autograder.reject_submission(session,
             'Did not expect the eggs row to be in the output.',
-            args, input, output
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Accept the submission
@@ -648,28 +648,28 @@ course_desc:Mapping[str,Any] = {
             'title': 'Project 1',
             'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj1,
         },
         'proj2': {
             'title': 'Project 2',
             'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj2,
         },
         'proj3': {
             'title': 'Project 3',
             'due_time': datetime(year=2024, month=2, day=13, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj3,
         },
         'proj4': {
             'title': 'Project 4',
             'due_time': datetime(year=2024, month=2, day=20, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj4,
         },
         'midterm1': {
@@ -680,52 +680,45 @@ course_desc:Mapping[str,Any] = {
         },
         'proj5': {
             'title': 'Project 5',
-            'due_time': datetime(year=2024, month=3, day=5, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=3, day=7, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj5,
         },
         'proj6': {
             'title': 'Project 6',
-            'due_time': datetime(year=2024, month=3, day=12, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=3, day=26, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj6,
         },
         'proj7': {
             'title': 'Project 7',
-            'due_time': datetime(year=2024, month=3, day=26, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=2, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj7,
         },
         'proj8': {
             'title': 'Project 8',
-            'due_time': datetime(year=2024, month=4, day=9, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=16, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj8,
         },
         'proj9': {
             'title': 'Project 9',
-            'due_time': datetime(year=2024, month=4, day=16, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=23, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj9,
         },
         'proj10': {
             'title': 'Project 10',
-            'due_time': datetime(year=2024, month=4, day=23, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 3.6364,
-            'evaluator': evaluate_proj10,
-        },
-        'proj11': {
-            'title': 'Project 11',
             'due_time': datetime(year=2024, month=4, day=30, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
-            'evaluator': evaluate_proj11,
+            'weight': 4,
+            'evaluator': evaluate_proj10,
         },
     },
 }

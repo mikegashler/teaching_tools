@@ -35,11 +35,11 @@ def add_students(names:List[str], accounts:Dict[str,Any], toks:int=7) -> None:
             'toks': toks,
         }
 
-launch_script_with_subprocess = '''#!/bin/bash
+launch_script = '''#!/bin/bash
 
 # Make sure the script has unix line endings, and is executable
-sudo dos2unix -q ./run.bash
-sudo chmod 755 ./run.bash
+dos2unix -q ./run.bash
+chmod 755 ./run.bash
 
 # Launch it
 ./run.bash $* < _stdin.txt
@@ -50,109 +50,6 @@ find . -name "__pycache__" -exec rm -rf {} \;
 exit 0
 '''
 
-launch_script_with_sandbox = '''#!/bin/bash
-set -e
-
-# Make sure the files are owned by sandbox
-sudo chown sandbox:sandbox .
-sudo chown -R sandbox:sandbox *
-
-# Make sure the script has unix line endings, and is executable
-sudo dos2unix -q ./run.bash
-sudo chmod 755 ./run.bash
-
-# Launch the "run.bash" script
-sudo -u sandbox ./run.bash $* < _stdin.txt &
-
-# Start a time-out timer
-CHILD_PID=$!
-TIME_LIMIT=8
-for (( i = 0; i < $TIME_LIMIT; i++ )); do
-	sleep 1
-
-	#proc=$(ps -ef | awk -v pid=$CHILD_PID '$2==pid{print}{}')
-	#if [[ -z "$proc" ]]; then
-	#	break
-	#fi
-
-	if ! ps -p $CHILD_PID > /dev/null; then
-		break
-	fi
-done
-if [ $i -lt $TIME_LIMIT ]; then
-	echo ""
-else
-	echo "!!! Time limit exceeded! Killing the unfinished process !!!"
-	sudo kill -HUP $CHILD_PID
-    sleep 1
-    sudo kill -15 $CHILD_PID
-    sleep 1
-	sudo kill -9 $CHILD_PID
-fi
-
-# Clean up some generated files
-cd ..
-if [ -d "obj" ]; then
-	find . -name "*.class"  -exec -exec rm {} \;
-	find . -name "*.o"  -exec -exec rm {} \;
-	find . -name "*.obj"  -exec -exec rm {} \;
-	find . -name "*.ncb"  -exec -exec rm {} \;
-	find . -name "*.suo"  -exec -exec rm {} \;
-	find . -name "*.pch"  -exec -exec rm {} \;
-	find . -name "*.lib"  -exec -exec rm {} \;
-	find . -name "*.a"  -exec -exec rm {} \;
-fi
-'''
-
-launch_script_without_sandbox = '''#!/bin/bash
-set -e
-
-# Make sure the script has unix line endings, and is executable
-dos2unix -q ./run.bash
-chmod 755 ./run.bash
-
-# Launch the "run.bash" script
-./run.bash $* < _stdin.txt &
-
-# Start a time-out timer
-CHILD_PID=$!
-TIME_LIMIT=8
-for (( i = 0; i < $TIME_LIMIT; i++ )); do
-	sleep 1
-
-	#proc=$(ps -ef | awk -v pid=$CHILD_PID '$2==pid{print}{}')
-	#if [[ -z "$proc" ]]; then
-	#	break
-	#fi
-
-	if ! ps -p $CHILD_PID > /dev/null; then
-		break
-	fi
-done
-if [ $i -lt $TIME_LIMIT ]; then
-	echo ""
-else
-	echo "!!! Time limit exceeded! Killing the unfinished process !!!"
-	sudo kill -HUP $CHILD_PID
-    sleep 1
-    sudo kill -15 $CHILD_PID
-    sleep 1
-	sudo kill -9 $CHILD_PID
-fi
-
-# Clean up some generated files
-cd ..
-if [ -d "obj" ]; then
-	find . -name "*.class"  -exec -exec rm {} \;
-	find . -name "*.o"  -exec -exec rm {} \;
-	find . -name "*.obj"  -exec -exec rm {} \;
-	find . -name "*.ncb"  -exec -exec rm {} \;
-	find . -name "*.suo"  -exec -exec rm {} \;
-	find . -name "*.pch"  -exec -exec rm {} \;
-	find . -name "*.lib"  -exec -exec rm {} \;
-	find . -name "*.a"  -exec -exec rm {} \;
-fi
-'''
 
 # Executes a submission with the specified args and input, and returns its output
 def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='', sandbox:bool=True) -> str:
@@ -164,21 +61,15 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
 
     # Put a launch script in the same folder as run.bash
     with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
-        f.write(launch_script_with_subprocess)
-        # f.write(launch_script_with_sandbox if sandbox else launch_script_without_sandbox)
-
-    # # Execute the launch script
-    # os.system(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)} > _stdout.txt 2> _stderr.txt')
-
-    # # Read the output
-    # with open(os.path.join(start_folder, '_stdout.txt'), 'r') as f:
-    #     stdout = f.read()
-    # with open(os.path.join(start_folder, '_stderr.txt'), 'r') as f:
-    #     stderr = f.read()
-    # return stdout + stderr
+        f.write(launch_script)
 
     try:
-        output = check_output(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
+        # Launch it
+        if sandbox:
+            check_output(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stderr=STDOUT, shell=True, timeout=5)
+            output = check_output(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
+        else:
+            output = check_output(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
     except SubprocessError:
         output = b"error: Timed out. (This usually indicates an endless loop in your code.)"
     except CalledProcessError:
