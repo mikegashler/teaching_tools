@@ -652,8 +652,12 @@ def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
-        input = '''Aloysius
-8
+        input = '''9
+/var/www/autograder/test_data/db.csv
+10
+0
+dog
+fish
 0
 '''
         output = autograder.run_submission(submission, args, input)
@@ -669,10 +673,83 @@ def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, An
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
-    if output.find('xxx') < 0:
+    fish_index = output.find('fish')
+    if fish_index >= 0:
         return autograder.reject_submission(session,
-            'Did not find xxx.',
+            'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    carrot_index = output.find('carrot')
+    if carrot_index >= 0:
+        return autograder.reject_submission(session,
+            'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    brown_index = output.find('brown')
+    if brown_index < 0:
+        return autograder.reject_submission(session,
+            'Expected the row with doughnut to appear in the output',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    white_index = output.find('white')
+    if white_index < 0:
+        return autograder.reject_submission(session,
+            'Expected the row with eggs to appear in the output',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    if white_index < brown_index:
+        return autograder.reject_submission(session,
+            'Expected the doughnut row to come before the eggs row',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+
+    # Test 1: See if it produces the exactly correct output
+    try:
+        args = ['quiet']
+        input = '''9
+/var/www/autograder/test_data/db.csv
+10
+2
+0
+4
+0
+'''
+        output = autograder.run_submission(submission, args, input)
+    except Exception as e:
+        return autograder.reject_submission(session, str(e))
+    if output.find('error:') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there were errors.',
             args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        return autograder.reject_submission(session,
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
+            args, input, output,
+        )
+    eggs_pos = output.find('eggs')
+    if eggs_pos >= 0:
+        return autograder.reject_submission(session,
+            'Did not expect the eggs row to be in the output.',
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    eggs_pos = output.find('doughnut')
+    if eggs_pos >= 0:
+        return autograder.reject_submission(session,
+            'Did not expect the doughnut row to be in the output. Did you use smart_compare for all comparisons?',
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    carrot_pos = output.find('carrot')
+    if carrot_pos < 0:
+        return autograder.reject_submission(session,
+            'Expected the carrot row to be in the output.',
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    fish_pos = output.find('fish')
+    if fish_pos < 0:
+        return autograder.reject_submission(session,
+            'Expected the fish row to be in the output.',
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Accept the submission

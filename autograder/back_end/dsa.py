@@ -285,7 +285,7 @@ def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 /var/www/autograder/test_data/simple.csv
 7
 0
-doughnut
+dog
 fish
 0
 '''
