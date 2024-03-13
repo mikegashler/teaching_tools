@@ -5,6 +5,16 @@ from datetime import datetime
 from threading import Lock
 import autograder
 import sys
+import re
+
+# Returns the first number in the string.
+# Throws if there is not one.
+def next_num(s:str) -> float:
+    results = re.search(f'[-+\d.e]+', s)
+    if results:
+        return float(results.group())
+    else:
+        raise ValueError('No number found')
 
 def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
     # Unpack the submission
@@ -534,9 +544,9 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
-    if output.find('passed') < 0:
+    if output.find('passed') < 0 and output.find('Passed') < 0:
         return autograder.reject_submission(session,
-            'The unit test did not pass.',
+            'The unit test did not pass. (Did not find the string "passed" in the output.)',
             args, input, output,
         )
 
@@ -586,6 +596,11 @@ zebra
                 f'The sorted order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
                 args, input, output,
             )
+        elif i < 0:
+            return autograder.reject_submission(session,
+                f'Expected to find the word {words_in_order[i]} in the output.',
+                args, input, output,
+            )
         prev = pos
     comp = 'comparisons: '
     comp_pos = output.find(comp)
@@ -595,25 +610,17 @@ zebra
             args, input, output,
         )
     comp_pos += len(comp)
-    i = 0
-    while output[comp_pos + i].isdigit():
-        i += 1
-    if i == 0:
-        return autograder.reject_submission(session,
-            f'Expected a number after "comparisons: ". See step 2.d.',
-            args, input, output,
-        )
-    comp_val = int(output[comp_pos:comp_pos + 1])
+    comp_val = next_num(output[comp_pos:])
     if comp_val <= 6 or comp_val >= 16:
         return autograder.reject_submission(session,
-            f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
+            f'The number of comparisons performed ({comp_val}) is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
 
     # Test 2: Sort a bigger list
     try:
         args = ['quiet']
-        input = '1\n' + ('xyz' * 1024) + '\n8\n0\n'
+        input = '1\n' + ('xyz\n' * 1024) + '\n8\n0\n'
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
@@ -625,18 +632,10 @@ zebra
             args, input, output,
         )
     comp_pos += len(comp)
-    i = 0
-    while output[comp_pos + i].isdigit():
-        i += 1
-    if i == 0:
-        return autograder.reject_submission(session,
-            f'Expected a number after "comparisons: ". See step 2.d.',
-            args, input, output,
-        )
-    comp_val = int(output[comp_pos:comp_pos + 1])
+    comp_val = next_num(output[comp_pos:])
     if comp_val <= 5118 or comp_val >= 10241:
         return autograder.reject_submission(session,
-            f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
+            f'The number of comparisons performed ({comp_val}) is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
 
