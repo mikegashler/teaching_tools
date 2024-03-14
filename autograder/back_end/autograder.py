@@ -358,6 +358,26 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
 
     return {}
 
+def make_project_completion_rates(accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> str:
+    p:List[str] = []
+    p.append('<ul>')
+    for proj_id in course_desc['projects']:
+        proj = course_desc['projects'][proj_id]
+        proj_title = proj['title']
+        proj_title_clean = proj_title.replace(' ', '_')
+        total_count = 0
+        completed_count = 0
+        for name in accounts:
+            acc = accounts[name]
+            if 'ta' in acc:
+                continue
+            total_count += 1
+            if proj_title_clean in acc:
+                completed_count += 1
+        p.append(f'<li>{proj_title}: {(100 * completed_count / total_count):.1f}% completed</li>')
+    p.append('</ul>')
+    return "".join(p)
+
 def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:str) -> str:
     now_time = datetime.now()
     t:List[str] = []
@@ -483,15 +503,33 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p:List[str] = []
     page_start(p, session)
 
-    # Add a new student
-    if 'newstudent' in params:
-        if params['newstudent'] in accounts:
-            return {
-                'content': f'Error, account for {params["newstudent"]} already exists!'
-            }
-        add_students([ params['newstudent'] ], accounts)
+    # Add new students
+    if 'newstudents' in params:
+        rows = params['newstudents'].split('\n')
+        for row in rows:
+            name = row.strip()
+            if len(name) == 0:
+                continue
+            first_comma = name.find(',')
+            if first_comma < 0:
+                return {
+                    'content': f'Error, one or more names contained no comma'
+                }
+            if name.rfind(',') != first_comma:
+                return {
+                    'content': f'Error, one or more names contained multiple commas'
+                }
+        names_to_add = []
+        for row in rows:
+            name = row.strip()
+            if len(name) == 0:
+                continue
+            if params[name] in accounts:
+                p.append('Skipping {name} because an account for that name already exists<br><br>')
+            names_to_add.append(name)
+        add_students(names_to_add, accounts)
         save_accounts(str(course_desc['accounts']), accounts)
-        print(f'Added new student: {params["newstudent"]}')
+        print(f'{len(names_to_add)} new student accounts created.<br><br>')
 
     # Reset a student's password
     if 'resetme' in params:
@@ -571,6 +609,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Student whose password to reset:')
     p.append('</td><td>')
     p.append('<select name="resetme">')
+    p.append(f'<option name="" value="">---</option>')
     for name in sorted(accounts):
         if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
             p.append(f'<option name="{name}" value="{name}">{name}</option>')
@@ -580,17 +619,18 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Form to add a new student
-    p.append('<h2>Add a new student</h3>')
+    # Form to add new students
+    p.append('<h2>Add new students</h3>')
+    p.append('<p>The structure should be: last-name-comma-given-name(s). One name per line. No trailing punctuation.</p>')
     p.append(f'<form action="{dest_page}"')
     p.append(' method="post"">')
     p.append('<table>')
     p.append('<tr><td>')
-    p.append('Student name:')
+    p.append('Student names:')
     p.append('</td><td>')
-    p.append('<input type="text" name="newstudent">')
+    p.append('<textarea name="newstudents"></textarea>')
     p.append('</td></tr>')
-    p.append('<tr><td></td><td><input type="submit" value="Add new student">')
+    p.append('<tr><td></td><td><input type="submit" value="Add new students">')
     p.append('</td></tr></table>')
     p.append('</form>')
 
@@ -603,8 +643,9 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Student to grant tokens to:')
     p.append('</td><td>')
     p.append('<select name="student">')
+    p.append(f'<option name="" value="">---</option>')
     for name in sorted(accounts):
-        p.append(f'<option name="{name}" value="{name}">{name}</option>')
+        p.append(f'<option name="{name}" value="{name}">{name} (has {accounts[name]["toks"]})</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
@@ -625,6 +666,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Student to set score for:')
     p.append('</td><td>')
     p.append('<select name="student">')
+    p.append(f'<option name="" value="">---</option>')
     for name in sorted(accounts):
         p.append(f'<option name="{name}" value="{name}">{name}</option>')
     p.append('</select>')
@@ -633,6 +675,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Project to set score for:')
     p.append('</td><td>')
     p.append('<select name="project">')
+    p.append(f'<option name="" value="">---</option>')
     for proj in course_desc['projects']:
         title = course_desc['projects'][proj]['title']
         title_clean = title.replace(' ', '_')
@@ -645,30 +688,6 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('<input type="text" name="score">')
     p.append('</td></tr>')
     p.append('<tr><td></td><td><input type="submit" value="Set score">')
-    p.append('</td></tr></table>')
-    p.append('</form>')
-
-    # Form to set many project scores
-    p.append('<h2>Set many project scores</h3>')
-    p.append(f'<form action="{dest_page}"')
-    p.append(' method="post">')
-    p.append('<table>')
-    p.append('<tr><td>')
-    p.append('Project to set score for:')
-    p.append('</td><td>')
-    p.append('<select name="project">')
-    for proj in course_desc['projects']:
-        title = course_desc['projects'][proj]['title']
-        title_clean = title.replace(' ', '_')
-        p.append(f'<option name="{title_clean}" value="{title_clean}">{title_clean}</option>')
-    p.append('</select>')
-    p.append('</td></tr>')
-    p.append('<tr><td>')
-    p.append('CSV data:<br>(last-name, first-name, score)')
-    p.append('</td><td>')
-    p.append('<textarea name="scores"></textarea>')
-    p.append('</td></tr>')
-    p.append('<tr><td></td><td><input type="submit" value="Set many scores">')
     p.append('</td></tr></table>')
     p.append('</form>')
 
@@ -688,7 +707,38 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Show all the grades
+    # Form to set many project scores
+    p.append('<h2>Set many project scores</h3>')
+    p.append('<p>Names should be canonicalized.</p>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Project to set score for:')
+    p.append('</td><td>')
+    p.append('<select name="project">')
+    p.append(f'<option name="" value="">---</option>')
+    for proj in course_desc['projects']:
+        title = course_desc['projects'][proj]['title']
+        title_clean = title.replace(' ', '_')
+        p.append(f'<option name="{title_clean}" value="{title_clean}">{title_clean}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td>')
+    p.append('CSV data:<br>(last-name, first-name, score)<br>(one score per row)')
+    p.append('</td><td>')
+    p.append('<textarea name="scores"></textarea>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Set many scores">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    # Show the project completion rate
+    p.append('<h2>Project completion rates</h2>')
+    p.append(make_project_completion_rates(accounts, course_desc))
+
+    # Show all the scores
+    p.append('<h2>Scores</h2>')
     p.append(make_grades(accounts, course_desc, ''))
 
     page_end(p)

@@ -591,18 +591,18 @@ zebra
     prev = -1
     for i in range(len(words_in_order)):
         pos = output.find(words_in_order[i])
-        if i > 0 and pos <= prev:
-            return autograder.reject_submission(session,
-                f'The sorted order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
-                args, input, output,
-            )
-        elif i < 0:
+        if i < 0:
             return autograder.reject_submission(session,
                 f'Expected to find the word {words_in_order[i]} in the output.',
                 args, input, output,
             )
+        elif pos <= prev:
+            return autograder.reject_submission(session,
+                f'The sorted order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
+                args, input, output,
+            )
         prev = pos
-    comp = 'comparisons: '
+    comp = 'comparisons:'    
     comp_pos = output.find(comp)
     if comp_pos < 0:
         return autograder.reject_submission(session,
@@ -624,18 +624,17 @@ zebra
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
         return autograder.reject_submission(session, str(e))
-    comp = 'comparisons: '
+    comp = 'comparisons:'
     comp_pos = output.find(comp)
     if comp_pos < 0:
         return autograder.reject_submission(session,
             f'Did not find the string "comparisons: " in your output. See step 2.d.',
             args, input, output,
         )
-    comp_pos += len(comp)
     comp_val = next_num(output[comp_pos:])
     if comp_val <= 5118 or comp_val >= 10241:
         return autograder.reject_submission(session,
-            f'The number of comparisons performed ({comp_val}) is not consistent with mergesort. Are you counting comparisons correctly?',
+            f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
 
@@ -763,8 +762,31 @@ def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
-        input = '''Aloysius
+        input = '''1
+apple
+1 zither
+cheese
+22 xylophone
+banana
+3 didgeridoo
+
+3
+appl
+ehse
+cesb
+anaa
+
+4
+6
+7
 8
+9
+/var/www/autograder/test_data/db.csv
+10
+2
+0
+4
+11
 0
 '''
         output = autograder.run_submission(submission, args, input)
@@ -780,9 +802,19 @@ def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, An
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
-    if output.find('xxx') < 0:
+    
+    inst_pos = output.find('instantiated:')
+    inst_val = next_num(output[inst_pos:])
+    dele_pos = output.find('deleted:')
+    dele_val = next_num(output[dele_pos:])
+    if inst_val < 7:
         return autograder.reject_submission(session,
-            'Did not find xxx.',
+            'The total number of instantiations is too small. It looks like you are not counting instantiations properly.',
+            args, input, output,
+        )
+    if dele_val + 2 < inst_val:
+        return autograder.reject_submission(session,
+            'There were more instantiations than deletions. This suggests you did not clean up memory properly. (Two more instantiations than deletions are allowed because of the global CharMap and the global Dataset. But all other instances should be deleted.)',
             args, input, output,
         )
 
@@ -798,9 +830,19 @@ def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, A
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
-        input = '''Aloysius
-8
-0
+        input = '''12
+taco
+acotay
+12
+rice
+iceray
+12
+pineapple
+ineapplepay
+13
+taco
+13
+pineapple
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
@@ -815,9 +857,19 @@ def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, A
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
-    if output.find('xxx') < 0:
+    if output.find('iceray') >= 0:
         return autograder.reject_submission(session,
-            'Did not find xxx.',
+            'Did not expect to find "iceray" in the output. I did not query for "rice"!',
+            args, input, output,
+        )
+    if output.find('ineapplepay') < 0:
+        return autograder.reject_submission(session,
+            'Expected to find "ineapplepay" in the output.',
+            args, input, output,
+        )
+    if output.find('acotay') < 0:
+        return autograder.reject_submission(session,
+            'Expected to find "acotay" in the output.',
             args, input, output,
         )
 
@@ -833,8 +885,24 @@ def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, A
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
-        input = '''Aloysius
-8
+        input = '''14
+salmon
+14
+money
+14
+tarantula
+14
+banana
+14
+zebra
+14
+ant
+15
+15
+15
+15
+15
+15
 0
 '''
         output = autograder.run_submission(submission, args, input)
