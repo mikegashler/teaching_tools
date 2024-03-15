@@ -16,12 +16,7 @@ def next_num(s:str) -> float:
     else:
         raise ValueError('No number found')
 
-def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'dsa_proj1_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj1(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
@@ -31,32 +26,27 @@ def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     if output.find('carrot') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I chose option 1 to load a CSV file, but the contents of that CSV file did not appear in the output. Did you print the CSV contents as described in step 8.l?',
             args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'dsa_proj2_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj2(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the stats correctly
     try:
         args:List[str] = []
@@ -67,77 +57,72 @@ def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     if output.find('9') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I directed your program to load a dataset with 9 rows (not including the column names) and then print stats, but I could not find "9" anywhere in the output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('3') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I directed your program to load a dataset with 3 columns and then print stats, but I could not find "3" anywhere in the output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('4') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I directed your program to load a dataset with 4 unique values in one of the columns, but I could not find "4" anywhere in the output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('5') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I directed your program to load a dataset with 5 unique values in one of the columns, but I could not find "5" anywhere in the output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('6') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The most common value in one of the columns was "6", but I could not find "6" anywhere in the output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('7') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'There were 7 unique values in one of the columns, but I could not find "7" anywhere in the output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('apple') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The most common value in one of the columns was "apple", but I could not find "apple" anywhere in the output of your program.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('red') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The most common value in one of the columns was "red", but I could not find "red" anywhere in the output of your program.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/stats.csv')
         )
     if output.find('yellow') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like your program still prints all the values in the dataset. It should not do that. See step 1.c.',
         args, input, output
         )
     if output.find('pumpkin') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like your program still prints all the values in the dataset. It should not do that. See step 1.c.',
         args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'dsa_proj3_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj3(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the stats correctly
     try:
         args:List[str] = []
@@ -148,42 +133,37 @@ def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     if output.find('Color') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I loaded a dataset with a column named "Color", and I printed stats, but the word "Color" did not occur in your output. Did you print all the column names?',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if output.find('9') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The max value in one of the columns was 9.0, but I did not find "9" in your output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if output.find('5.714') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The mean value in one of the columns was 5.71428, but I did not find this value in your output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'dsa_proj4_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it sorts a single column correctly
     try:
         args:List[str] = []
@@ -196,14 +176,14 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
@@ -213,7 +193,7 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
         pos = output.find(terms_in_order[i])
         if i > 0:
             if prev >= pos:
-                return autograder.reject_submission(session,
+                return autograder.reject_submission(submission,
                     f'Expected the order to be sorted according to the smart_compare custom comparator. Got some other order.',
                     args, input, output
                 )
@@ -231,14 +211,14 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     terms_in_order = ['Food', 'doughnut', 'fish', 'apple', 'grapes', 'carrot', 'eggs', 'banana']
     prev = -1
     for i in range(1, len(terms_in_order)):
         pos = output.find(terms_in_order[i])
         if i > 0:
             if prev >= pos:
-                return autograder.reject_submission(session,
+                return autograder.reject_submission(submission,
                     'I sorted by the second column, then checked the order in the first column, and the order was incorrect.',
                     args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
                 )
@@ -256,28 +236,23 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     terms_in_order = ['Food', 'fish', 'eggs', 'apple', 'banana', 'doughnut']
     prev = -1
     for i in range(1, len(terms_in_order)):
         pos = output.find(terms_in_order[i])
         if i > 0:
             if prev >= pos:
-                return autograder.reject_submission(session,
+                return autograder.reject_submission(submission,
                     'I sorted by the third column, then checked the order in the first column, and the order was incorrect.',
                     args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
                 )
         prev = pos
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'dsa_proj5_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj5(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: Do a query
     try:
         args:List[str] = []
@@ -291,43 +266,43 @@ fish
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     brown_index = output.find('brown')
     if brown_index < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the row with doughnut to appear in the output',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     white_index = output.find('white')
     if white_index < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the row with eggs to appear in the output',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if white_index < brown_index:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected doughnut to come before eggs',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     fish_index = output.find('fish')
     if fish_index >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     carrot_index = output.find('carrot')
     if carrot_index >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
@@ -345,45 +320,40 @@ fish
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     carrot_pos = output.find('carrot')
     if carrot_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the carrot row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     fish_pos = output.find('fish')
     if fish_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the fish row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     eggs_pos = output.find('eggs')
     if eggs_pos >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect the eggs row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'dsa_proj6_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
@@ -395,14 +365,14 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
@@ -411,25 +381,20 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     attr2_pos = output.rfind('random2')
     attr3_pos = output.rfind('random3')
     if attr0_pos < 0 or attr1_pos < 0 or attr2_pos < 0 or attr3_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'One or more of the column names did not appear in your output. You are supposed to drop each column, and print its name as you do.',
         args, input, output
         )
     if attr1_pos < attr0_pos or attr1_pos < attr2_pos or attr1_pos < attr3_pos:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             '"predictive" should have been the last column to be dropped (because it is the most predictive of the "target" column). However, it looks like one of the other column names occurs later in your output.',
         args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'dsa_proj7_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
@@ -440,14 +405,14 @@ def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
@@ -457,12 +422,12 @@ def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     seven_colon_pos = output.rfind('7: ')
     eight_colon_pos = output.rfind('8: ')
     if eight_colon_pos >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'There should only be 8 dimensions in the Numpy representation of this data, but your output indicates that it found more than 8 principal components.',
         args, input, output
         )
     if seven_colon_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'There should be 8 dimensions in the Numpy representation of this data, but your output indicates that it found fewer than 8 principal components.',
         args, input, output
         )
@@ -470,45 +435,40 @@ def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, An
     five_eig = next_num(output[five_colon_pos + 3:])
     six_eig = next_num(output[six_colon_pos + 3:])
     if zero_eig > 50.:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Your first root-eigenvalue is too big. Did you center and standardize the columns before computing eigenvalues?',
         args, input, output
         )
     if zero_eig > 5.:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Your first root-eigenvalue is too big. Did you center the columns before computing eigenvalues?',
         args, input, output
         )
     if zero_eig > 1.6:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Your first root-eigenvalue is too big. Did you standardize the columns before computing eigenvalues?',
         args, input, output
         )
     if zero_eig < 1.1:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Your first root-eigenvalue is too small.',
         args, input, output
         )
     if five_eig < 0.8 or five_eig > 1.2:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Your fifth root-eigenvalue is incorrect.',
         args, input, output
         )
     if six_eig > 0.2:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Your sixth root-eigenvalue is too large.',
         args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'dsa_proj8_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
@@ -517,32 +477,27 @@ xxx
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Could not find xxx',
         args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'dsa_proj9_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
@@ -551,32 +506,27 @@ xxx
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Could not find xxx',
         args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'dsa_proj10_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj10(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
@@ -585,32 +535,27 @@ xxx
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Could not find xxx',
         args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'dsa_proj11_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj11(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
@@ -619,25 +564,25 @@ xxx
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error: ') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
         )
     if output.find('Traceback (most') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like an error was raised.',
             args, input, output
         )
     if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Could not find xxx',
         args, input, output
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
 course_desc:Mapping[str,Any] = {
     'course_long': 'Data Structures & Algorithms',
@@ -732,7 +677,7 @@ except:
 
 accept_lock = Lock()
 
-def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+def accept_submission(submission:Mapping[str,Any]) -> Mapping[str,Any]:
     # Give the student credit
     with accept_lock:
         account = submission['account']
@@ -742,13 +687,13 @@ def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[s
         days_late -= covered_days
         score = max(30, 100 - 3 * days_late)
         if not (title_clean in account): # to protect from multiple simultaneous accepts
-            log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+            log(f'Passed: title={title_clean}, days_late={days_late}, score={score}')
             account[title_clean] = score
             account["toks"] -= covered_days
             autograder.save_accounts(course_desc['accounts'], accounts)
 
         # Make an acceptance page
-        return autograder.accept_submission(session, submission, days_late, covered_days, score)
+        return autograder.accept_submission(submission, days_late, covered_days, score)
 
 def view_scores_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     return autograder.view_scores_page(params, session, 'dsa_view_scores.html', accounts, course_desc)

@@ -84,7 +84,7 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
 # Receives a submission. Unzips it. Checks for common problems.
 # Executes it, and returns the output as a string.
 # Throws a ValueError if anything is wrong with the submission.
-def receive_and_unpack_submission(params:Mapping[str, Any], course:str, project:str, student:str) -> str:
+def unpack_and_check_submission(params:Mapping[str, Any], course:str, project:str, student:str) -> str:
     # Make sure we received a zip file
     zipfilename = params['filename']
     _, extension = os.path.splitext(zipfilename)
@@ -240,7 +240,7 @@ def display_data(filename:str) -> str:
 
 # Makes a page describing why the submission was rejected
 def reject_submission(
-        session:Session, 
+        submission:Mapping[str,Any], 
         message:str, 
         args:List[str]=[], 
         input:str='', 
@@ -257,12 +257,18 @@ def reject_submission(
     if len(post_message) > 0:
         p.append(post_message)
     p.append('Please fix the issue and resubmit.')
+
+    # Save the feedback
+    results = ''.join(p)
+    start_folder = submission['folder']
+    with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
+        f.write(results)
+
     return {
-        'results': ''.join(p),
+        'results': results,
     }
 
 def accept_submission(
-        session:Session, 
         submission:Mapping[str,Any], 
         days_late:int, 
         covered_days:int, 
@@ -276,8 +282,15 @@ def accept_submission(
     p.append('<br><br>(Some assignments have parts that need to be checked manually. ')
     p.append('Also, some checks will be made to ensure that submissions were not just designed to fool the autograder. ')
     p.append('So this score may still be adjusted by the grader.)</font>')
+
+    # Save the feedback
+    results = ''.join(p)
+    start_folder = submission['folder']
+    with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
+        f.write(results)
+
     return {
-        'results': ''.join(p),
+        'results': results,
     }
 
 
@@ -385,7 +398,7 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
     p.append('<pre class="code">')
 
     # Row 1
-    t.append('<table border="1" style="overflow-x:scroll; width:700px; display:block;"><tr><td>Last Name</td><td>First Name</td>')
+    t.append('<table border="1" style="overflow-x:scroll; width:750px; display:block;"><tr><td>Last Name</td><td>First Name</td>')
     p.append('Last Name,First Name')
     for proj_id in course_desc['projects']:
         proj = course_desc['projects'][proj_id]
@@ -453,7 +466,7 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
                 t.append(f'<td>{due_str}</td>')
                 p.append(f',{due_str}')
             col_index += 1
-        t.append(f'<td>{weighted_points * 100. / sum_weight}</td></tr>\n')
+        t.append(f'<td>{(weighted_points * 100. / sum_weight):.2f}</td></tr>\n')
         eq += f')*100/{chr(col_index)}2'
         p.append(f',{eq}')
         p.append('\n')
@@ -714,7 +727,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append(' method="post">')
     p.append('<table>')
     p.append('<tr><td>')
-    p.append('Project to set score for:')
+    p.append('Project to set scores for:')
     p.append('</td><td>')
     p.append('<select name="project">')
     p.append(f'<option name="" value="">---</option>')
@@ -791,31 +804,31 @@ def make_submission_page(
     p.append(f'<big><b>{course_name}</b></big><br>')
     p.append(f'<big>Submit <b>{title}</b></big><br>')
 
-    # Make sure the student still needs to submit this project
-    if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
-        p.append(f'You have already received credit for {title}. There is no need to submit it again.')
-    else:
-        # Make the upload form
-        p.append(f'Due time: {due_time}<br>')
-        now_time = datetime.now()
-        p.append(f'Now time: {now_time}<br>')
-        tokens = account["toks"]
-        p.append(f'Your late token balance: {tokens}<br>')
-        p.append('<br>')
-        p.append('Please upload your zip file:')
-        p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
-        p.append('    <input type="file" id="file" name="filename">')
-        p.append('    <input type="submit">')
-        p.append('</form>')
-        p.append('<script>\n')
-        p.append('const uploadField = document.getElementById("file");\n')
-        p.append('uploadField.onchange = function() {\n')
-        p.append('    if(this.files[0].size > 2000000){\n')
-        p.append('       alert("That file is too big!");\n')
-        p.append('       this.value = "";\n')
-        p.append('    }\n')
-        p.append('}\n')
-        p.append('</script>')
+    # Tell the student if they have already received credit for this assignment.
+    if title_clean in account and account[title_clean] > 0:
+        p.append(f'(You have already received credit for {title}. Your score is {account[title_clean]}<br><br>.')
+
+    # Make the upload form
+    p.append(f'Due time: {due_time}<br>')
+    now_time = datetime.now()
+    p.append(f'Now time: {now_time}<br>')
+    tokens = account["toks"]
+    p.append(f'Your late token balance: {tokens}<br>')
+    p.append('<br>')
+    p.append('Please upload your zip file:')
+    p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
+    p.append('    <input type="file" id="file" name="filename">')
+    p.append('    <input type="submit">')
+    p.append('</form>')
+    p.append('<script>\n')
+    p.append('const uploadField = document.getElementById("file");\n')
+    p.append('uploadField.onchange = function() {\n')
+    p.append('    if(this.files[0].size > 2000000){\n')
+    p.append('       alert("That file is too big!");\n')
+    p.append('       this.value = "";\n')
+    p.append('    }\n')
+    p.append('}\n')
+    p.append('</script>')
 
     # Make the view scores form
     p.append('<br><br>')
@@ -846,7 +859,7 @@ def make_log_out_page(params: Mapping[str, Any], session: Session) -> Mapping[st
 #   'succeeded': False,
 #   'page': { 'content': some error page }
 # }
-def unpack_submission(
+def receive_submission(
         params: Mapping[str, Any],
         session: Session,
         course_desc:Mapping[str,Any],
@@ -854,8 +867,6 @@ def unpack_submission(
         accounts:Dict[str,Any],
         submit_page:str,
 ) -> Mapping[str,Any]:
-    print(f'in unpack_submission for session.name={session.name}', file=sys.stderr)
-
     # Make sure the user is logged in
     response = require_login(params, session, submit_page, accounts, course_desc)
     if 'content' in response:
@@ -877,12 +888,17 @@ def unpack_submission(
         desc = course_desc['projects'][project_name]
         title = desc['title']
         title_clean = title.replace(' ', '_')
-        folder = receive_and_unpack_submission(params, course_desc['course_short'], title_clean, session.name)
+        folder = unpack_and_check_submission(params, course_desc['course_short'], title_clean, session.name)
     except Exception as e:
         print(traceback.format_exc())
         return {
             'succeeded': False,
-            'page': reject_submission(session, str(e)),
+            'page': reject_submission({
+                'succeeded': False, 
+                'account': account, 
+                'folder': folder, 
+                'title_clean': title_clean
+            }, str(e)),
         }
     
     return {
@@ -1002,11 +1018,29 @@ def purge_dead_jobs() -> None:
                 del jobs[id]
 
 # This is the thread that evaluates a submission
-def eval_thread(params: Mapping[str, Any], session: Session, eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]], id:str) -> None:
+def eval_thread(
+        params: Mapping[str, Any], 
+        session: Session, 
+        eval_func:Callable[[Mapping[str,Any]],Mapping[str,Any]], 
+        id:str,
+        course_desc:Mapping[str,Any],
+        proj_short_name: str,
+        accounts:Dict[str,Any],
+        submit_page:str, 
+) -> None:
+    # Find the job
     global jobs
-    print(f'in eval_thread for session.name={session.name}', file=sys.stderr)
     the_job = jobs[id]
-    the_job.results = eval_func(params, session)
+
+    # Receive and unpack the submission
+    submission = receive_submission(params, session, course_desc, proj_short_name, accounts, submit_page)
+    if not ('succeeded' in submission) or not submission['succeeded']:
+        the_job.results = cast(Mapping[str,Any], submission['page'])
+        return
+
+    # Evaluate the submission
+    the_job.results = eval_func(submission)
+
 
 # Makes a job id
 def make_random_id() -> str:
@@ -1016,24 +1050,50 @@ def make_random_id() -> str:
 def launch_eval_thread(
         params: Mapping[str, Any], 
         session: Session, 
-        eval_func:Callable[[Mapping[str,Any],Session],Mapping[str,Any]],
-        submit_page:str, 
-        accounts:Dict[str,Any],
         course_desc:Mapping[str,Any],
+        proj_short_name: str,
+        accounts:Dict[str,Any],
+        submit_page:str, 
 ) -> Mapping[str,Any]:
     global jobs
+    purge_dead_jobs()
 
     # Get the account
     response = require_login(params, session, submit_page, accounts, course_desc)
     if 'content' in response:
         return response
+    account = accounts[session.name]
+
+    # Check whether this project has already been submitted
+    desc = course_desc['projects'][proj_short_name]
+    title = desc['title']
+    title_clean = title.replace(' ', '_')
+    if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
+        submission = receive_submission(params, session, course_desc, proj_short_name, accounts, submit_page)
+        score = account[title_clean]
+        p:List[str] = []
+        page_start(p, session)
+        p.append(f'Thank you. Your resubmission of {title} has been received. Your score for this project remains {score}.')
+        page_end(p)
+        return {
+            'content': ''.join(p),
+        }
 
     # Make the job
     id = make_random_id()
     jobs[id] = Job()
-    thread = threading.Thread(target=eval_thread, args=(params, session, eval_func, id))
+    eval_func = course_desc['projects'][proj_short_name]['evaluator']
+    thread = threading.Thread(target=eval_thread, args=(
+        params, 
+        session, 
+        eval_func, 
+        id, 
+        course_desc, 
+        proj_short_name, 
+        accounts,
+        submit_page,
+    ))
     thread.start()
-    purge_dead_jobs()
     return make_working_page(id, session)
 
 # Generates functions that handle submitting and receiving project submissions
@@ -1058,10 +1118,10 @@ def page_maker_factory(
         return launch_eval_thread(
             params,
             session,
-            course_desc['projects'][proj_short_name]['evaluator'],
-            submit_page,
-            accounts,
             course_desc,
+            proj_short_name,
+            accounts,
+            submit_page,
         )
     return make_submit_page, make_receive_page
 

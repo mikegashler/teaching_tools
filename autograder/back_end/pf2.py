@@ -16,12 +16,7 @@ def next_num(s:str) -> float:
     else:
         raise ValueError('No number found')
 
-def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj1', accounts, 'pf2_proj1_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj1(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['aaa', 'bbb', 'ccc']
@@ -29,7 +24,7 @@ def evaluate_proj1(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 8'''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     expected = '''The arguments passed in were:
 arg 1 = aaa
 arg 2 = bbb
@@ -48,24 +43,17 @@ Hello, what is your name?
 Thanks for stopping by. Have a nice day!
 
 '''
-    p:List[str] = []
-    autograder.page_start(p, session)
     if output != expected:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The output does not match the expected output.',
             args, input, output,
             f'Expected output: <pre class="code">{expected}</pre><br><br>',
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj2(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj2', accounts, 'pf2_proj2_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj2(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: not debug mode, exactly 8 items
     try:
         args:List[str] = []
@@ -80,24 +68,24 @@ hair
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('debug mode') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I did not pass in the "debug" flag, but it still ran in debug mode!',
             args, input, output,
         )
     if output.find('delta') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The words in the lexicon were not displayed when not in debug mode.',
             args, input, output,
         )
@@ -128,19 +116,19 @@ tricky
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('debug mode') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'When I passed in the "debug" flag, it did not print that it was running in debug mode. (See step 2.j)',
             args, input, output,
         )
     if output.find('delta') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The words in the lexicon were not displayed when in debug mode.',
             args, input, output,
         )
     if output.find('rascal') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'I was able to enter more than 8 words into the lexicon. (See step 5.a)',
             args, input, output,
         )
@@ -171,22 +159,17 @@ tricky
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('delta') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'When I passed in a superfluous argument, it did not crash. (See step 2.j)',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj3(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj3', accounts, 'pf2_proj3_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj3(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: Make sure the name was changed and it prints words entered so far
     try:
         args:List[str] = []
@@ -199,24 +182,24 @@ gamma
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('Aloysius') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'You were supposed to change the name. See step 2.b.',
             args, input, output,
         )
     if output.find('beta') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'When the "quiet" flag is not used, you are supposed to print the words that have been entered so far.',
             args, input, output,
         )
@@ -233,9 +216,9 @@ gamma
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('beta') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'When the "quiet" flag is used, you are not supposed to print the words that have been entered so far.',
             args, input, output,
         )
@@ -266,29 +249,24 @@ pig
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     narwhal_spot = output.rfind('narwhal')
     elephant_spot = output.rfind('elephant')
     if narwhal_spot < 0 or elephant_spot < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the tear-down to print the lexicon in reverse order. But at least some of the animals I pushed on the stack were not printed!',
             args, input, output,
         )
     if elephant_spot < narwhal_spot:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The list was not correctly reversed.',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj4', accounts, 'pf2_proj4_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
@@ -309,19 +287,19 @@ def evaluate_proj4(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('#///#   #') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Flood fill did not work correctly. It should have filled the left-side box with slashes, but left the right-side box empty.',
             args, input, output,
         )
@@ -346,32 +324,27 @@ x
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('#xxx#xxx#   #') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Flood fill did not work correctly. It should have filled the left two regions with "x"s, but left the right-most region empty.',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj5(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj5', accounts, 'pf2_proj5_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj5(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: Test Boggle output
     try:
         args = ['quiet']
@@ -474,19 +447,19 @@ wrist
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('aaaaaaaa') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             f'When the "quiet" flag is used, you are not supposed to print all the words in your lexicon.',
             args, input, output,
         )
@@ -494,37 +467,32 @@ wrist
                  'knops', 'knots', 'lost', 'minors',
                  'plonk', 'storm', 'urns']:
         if output.find(word) < 0:
-            return autograder.reject_submission(session,
+            return autograder.reject_submission(submission,
                 f'Failed to find the word "{word}".',
                 args, input, output,
             )
     for word in ['poop', 'tot']:
         if output.find(word) >= 0:
-            return autograder.reject_submission(session,
+            return autograder.reject_submission(submission,
                 f'It looks like your implementation does not prevent letters from being used multiple times. For example, your implementation reported the invalid word "{word}".',
                 args, input, output,
             )
     for word in ['salad', 'salmon', 'taco', 'wrist', 'six']:
         if output.find(word) >= 0:
-            return autograder.reject_submission(session,
+            return autograder.reject_submission(submission,
                 f'Found the invalid word "{word}". (Make sure you are not printing all the words in your lexicon. That will cause the autograder to think you are finding them in the CharMatrix.)',
                 args, input, output,
             )
     if output.find('porn') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             f'Found the word "porn", which was not even in the lexicon!',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj6', accounts, 'pf2_proj6_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if the unit test passes
     try:
         args = ['quiet']
@@ -533,32 +501,27 @@ def evaluate_proj6(params:Mapping[str, Any], session:Session) -> Mapping[str, An
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('passed') < 0 and output.find('Passed') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The unit test did not pass. (Did not find the string "passed" in the output.)',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj7(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj7', accounts, 'pf2_proj7_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: Sort a very small list
     try:
         args = ['quiet']
@@ -576,14 +539,14 @@ zebra
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
@@ -592,12 +555,12 @@ zebra
     for i in range(len(words_in_order)):
         pos = output.find(words_in_order[i])
         if i < 0:
-            return autograder.reject_submission(session,
+            return autograder.reject_submission(submission,
                 f'Expected to find the word {words_in_order[i]} in the output.',
                 args, input, output,
             )
         elif pos <= prev:
-            return autograder.reject_submission(session,
+            return autograder.reject_submission(submission,
                 f'The sorted order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
                 args, input, output,
             )
@@ -605,14 +568,14 @@ zebra
     comp = 'comparisons:'    
     comp_pos = output.find(comp)
     if comp_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             f'Did not find the string "comparisons: " in your output. See step 2.d.',
             args, input, output,
         )
     comp_pos += len(comp)
     comp_val = next_num(output[comp_pos:])
     if comp_val <= 6 or comp_val >= 16:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             f'The number of comparisons performed ({comp_val}) is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
@@ -623,30 +586,25 @@ zebra
         input = '1\n' + ('xyz\n' * 1024) + '\n8\n0\n'
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     comp = 'comparisons:'
     comp_pos = output.find(comp)
     if comp_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             f'Did not find the string "comparisons: " in your output. See step 2.d.',
             args, input, output,
         )
     comp_val = next_num(output[comp_pos:])
     if comp_val <= 5118 or comp_val >= 10241:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj8(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj8', accounts, 'pf2_proj8_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
@@ -660,43 +618,43 @@ fish
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     fish_index = output.find('fish')
     if fish_index >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     carrot_index = output.find('carrot')
     if carrot_index >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     brown_index = output.find('brown')
     if brown_index < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the row with doughnut to appear in the output',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     white_index = output.find('white')
     if white_index < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the row with eggs to appear in the output',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if white_index < brown_index:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the doughnut row to come before the eggs row',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
@@ -714,51 +672,46 @@ fish
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     eggs_pos = output.find('eggs')
     if eggs_pos >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect the eggs row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     eggs_pos = output.find('doughnut')
     if eggs_pos >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect the doughnut row to be in the output. Did you use smart_compare for all comparisons?',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     carrot_pos = output.find('carrot')
     if carrot_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the carrot row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     fish_pos = output.find('fish')
     if fish_pos < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected the fish row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj9(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj9', accounts, 'pf2_proj9_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
@@ -791,14 +744,14 @@ anaa
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
@@ -808,25 +761,20 @@ anaa
     dele_pos = output.find('deleted:')
     dele_val = next_num(output[dele_pos:])
     if inst_val < 7:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'The total number of instantiations is too small. It looks like you are not counting instantiations properly.',
             args, input, output,
         )
     if dele_val + 2 < inst_val:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'There were more instantiations than deletions. This suggests you did not clean up memory properly. (Two more instantiations than deletions are allowed because of the global CharMap and the global Dataset. But all other instances should be deleted.)',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj10(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj10', accounts, 'pf2_proj10_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj10(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
@@ -846,42 +794,37 @@ pineapple
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('iceray') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not expect to find "iceray" in the output. I did not query for "rice"!',
             args, input, output,
         )
     if output.find('ineapplepay') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected to find "ineapplepay" in the output.',
             args, input, output,
         )
     if output.find('acotay') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Expected to find "acotay" in the output.',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
-def evaluate_proj11(params:Mapping[str, Any], session:Session) -> Mapping[str, Any]:
-    # Unpack the submission
-    submission = autograder.unpack_submission(params, session, course_desc, 'proj11', accounts, 'pf2_proj11_submit.html')
-    if not 'succeeded' in submission or not submission['succeeded']:
-        return cast(Mapping[str,Any], submission['page'])
-
+def evaluate_proj11(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
     try:
         args = ['quiet']
@@ -907,25 +850,25 @@ ant
 '''
         output = autograder.run_submission(submission, args, input)
     except Exception as e:
-        return autograder.reject_submission(session, str(e))
+        return autograder.reject_submission(submission, str(e))
     if output.find('error:') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there were errors.',
             args, input, output,
         )
     if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
             args, input, output,
         )
     if output.find('xxx') < 0:
-        return autograder.reject_submission(session,
+        return autograder.reject_submission(submission,
             'Did not find xxx.',
             args, input, output,
         )
 
     # Accept the submission
-    return accept_submission(session, submission)
+    return accept_submission(submission)
 
 course_desc:Mapping[str,Any] = {
     'course_long': 'Programming Foundations II',
@@ -1027,7 +970,7 @@ except:
 
 accept_lock = Lock()
 
-def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[str,Any]:
+def accept_submission(submission:Mapping[str,Any]) -> Mapping[str,Any]:
     # Give the student credit
     with accept_lock:
         account = submission['account']
@@ -1037,13 +980,13 @@ def accept_submission(session:Session, submission:Mapping[str,Any]) -> Mapping[s
         days_late -= covered_days
         score = max(30, 100 - 3 * days_late)
         if not (title_clean in account): # to protect from multiple simultaneous accepts
-            log(f'Passed: title={title_clean}, student={session.name}, days_late={days_late}, score={score}')
+            log(f'Passed: title={title_clean}, days_late={days_late}, score={score}')
             account[title_clean] = score
             account["toks"] -= covered_days
             autograder.save_accounts(course_desc['accounts'], accounts)
 
         # Make an acceptance page
-        return autograder.accept_submission(session, submission, days_late, covered_days, score)
+        return autograder.accept_submission(submission, days_late, covered_days, score)
 
 def view_scores_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     return autograder.view_scores_page(params, session, 'pf2_view_scores.html', accounts, course_desc)
