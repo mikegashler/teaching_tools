@@ -260,9 +260,10 @@ def reject_submission(
 
     # Save the feedback
     results = ''.join(p)
-    start_folder = submission['folder']
-    with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
-        f.write(results)
+    if 'folder' in submission:
+        start_folder = submission['folder']
+        with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
+            f.write(results)
 
     return {
         'results': results,
@@ -896,7 +897,6 @@ def receive_submission(
             'page': reject_submission({
                 'succeeded': False, 
                 'account': account, 
-                'folder': folder, 
                 'title_clean': title_clean
             }, str(e)),
         }

@@ -374,7 +374,7 @@ def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     if output.find('Traceback (most') >= 0:
         return autograder.reject_submission(submission,
             'It looks like an error was raised.',
-            args, input, output
+            args, input, output, autograder.display_data('/var/www/autograder/test_data/corr.csv')
         )
     attr0_pos = output.rfind('random1')
     attr1_pos = output.rfind('predictive')
@@ -383,12 +383,12 @@ def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     if attr0_pos < 0 or attr1_pos < 0 or attr2_pos < 0 or attr3_pos < 0:
         return autograder.reject_submission(submission,
             'One or more of the column names did not appear in your output. You are supposed to drop each column, and print its name as you do.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/corr.csv')
         )
     if attr1_pos < attr0_pos or attr1_pos < attr2_pos or attr1_pos < attr3_pos:
         return autograder.reject_submission(submission,
             '"predictive" should have been the last column to be dropped (because it is the most predictive of the "target" column). However, it looks like one of the other column names occurs later in your output.',
-        args, input, output
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/corr.csv')
         )
 
     # Accept the submission
