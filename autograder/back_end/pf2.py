@@ -553,7 +553,7 @@ zebra
     words_in_order = ['zebra', 'monkey', 'alligator', 'pizza', 'cheese', 'salad']
     prev = -1
     for i in range(len(words_in_order)):
-        pos = output.find(words_in_order[i])
+        pos = output.rfind(words_in_order[i])
         if i < 0:
             return autograder.reject_submission(submission,
                 f'Expected to find the word {words_in_order[i]} in the output.',

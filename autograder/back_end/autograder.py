@@ -70,16 +70,24 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
             output = check_output(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
         else:
             output = check_output(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
-    except SubprocessError:
-        output = b"error: Timed out. (This usually indicates an endless loop in your code.)"
     except CalledProcessError:
-        output = b"error: non-zero return code. (This is probably an error with the submission server.)"
+        print(traceback.format_exc(), file=sys.stderr)
+        output = b"error: non-zero return code. (Your program should return 0 if it is successful.)"
+    except SubprocessError:
+        print(traceback.format_exc(), file=sys.stderr)
+        output = b"error: Timed out. (This usually indicates an endless loop in your code.)"
     except:
         output = b"error: unrecognized error."
         print('Unrecognized error:')
         print(traceback.format_exc(), file=sys.stderr)
+
+    # Clean the output
     max_output_size = 2000000
-    return output[:max_output_size].decode()
+    cleaned_output = output[:max_output_size].decode()
+    cleaned_output = cleaned_output.replace('Success: no issues found ', 'MyPy found no typing issues ')
+    cleaned_output = cleaned_output.replace('find: ‘./.mypy_cache’: No such file or directory', '')
+    cleaned_output = cleaned_output.replace('find: ‘./__pycache__’: No such file or directory', '')
+    return cleaned_output
 
 # Receives a submission. Unzips it. Checks for common problems.
 # Executes it, and returns the output as a string.

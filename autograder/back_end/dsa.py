@@ -27,7 +27,7 @@ def evaluate_proj1(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -58,7 +58,7 @@ def evaluate_proj2(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -134,7 +134,7 @@ def evaluate_proj3(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -177,7 +177,7 @@ def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -267,7 +267,7 @@ fish
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -321,7 +321,7 @@ fish
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -366,7 +366,7 @@ def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -406,7 +406,7 @@ def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -478,7 +478,7 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -507,7 +507,7 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -536,7 +536,7 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
@@ -565,7 +565,7 @@ xxx
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
         return autograder.reject_submission(submission, str(e))
-    if output.find('error: ') >= 0:
+    if output.find(': error: ') >= 0:
         return autograder.reject_submission(submission,
             'It looks like there are errors.',
             args, input, output
