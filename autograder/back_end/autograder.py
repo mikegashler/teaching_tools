@@ -448,7 +448,8 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
 
     # Rows 4 on
     row_index = 4
-    for name in accounts:
+    names = sorted(accounts.keys())
+    for name in names:
         if len(student) > 0 and name != student:
             continue
         acc = accounts[name]
@@ -899,7 +900,7 @@ def receive_submission(
         title_clean = title.replace(' ', '_')
         folder = unpack_and_check_submission(params, course_desc['course_short'], title_clean, session.name)
     except Exception as e:
-        print(traceback.format_exc())
+        print(traceback.format_exc(), file=sys.stderr)
         return {
             'succeeded': False,
             'page': reject_submission({
@@ -1025,6 +1026,8 @@ def purge_dead_jobs() -> None:
             if datetime.now() - job.time > timedelta(minutes=30):
                 del jobs[id]
 
+
+
 # This is the thread that evaluates a submission
 def eval_thread(
         params: Mapping[str, Any], 
@@ -1047,8 +1050,30 @@ def eval_thread(
         return
 
     # Evaluate the submission
-    the_job.results = eval_func(submission)
+    try:
+        the_job.results = eval_func(submission)
+    except Exception as e:
+        # Log the error
+        random_id = make_random_id()
+        print(f'An internal server error occurred! {random_id}', file=sys.stderr)
+        if 'folder' in submission:
+              print(f'  Folder={submission["folder"]}', file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
 
+        # Generate some feedback
+        p:List[str] = []
+        p.append(f'<font color="red">I am very sorry, the submission server crashed while evaluating this submission. Please e-mail the instructor the following ID: {random_id} to help locate the relevant information for this crash in the server logs.</font><br><br>')
+
+        # Save the feedback
+        results = ''.join(p)
+        if 'folder' in submission:
+            start_folder = submission['folder']
+            with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
+                f.write(results)
+
+        the_job.results = {
+            'results': results,
+        }
 
 # Makes a job id
 def make_random_id() -> str:

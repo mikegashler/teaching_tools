@@ -906,57 +906,68 @@ course_desc:Mapping[str,Any] = {
         'midterm1': {
             'title': 'Midterm 1',
             'due_time': datetime(year=2024, month=2, day=26, hour=23, minute=59, second=59),
-            'weight': 20,
+            'weight': 18,
             'points': 86,
         },
         'proj5': {
             'title': 'Project 5',
             'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj5,
         },
         'proj6': {
             'title': 'Project 6',
             'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj6,
         },
         'proj7': {
             'title': 'Project 7',
             'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj7,
+        },
+        'midterm2': {
+            'title': 'Midterm 2',
+            'due_time': datetime(year=2024, month=4, day=1, hour=23, minute=59, second=59),
+            'weight': 18,
+            'points': 67,
         },
         'proj8': {
             'title': 'Project 8',
-            'due_time': datetime(year=2024, month=4, day=8, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj8,
         },
         'proj9': {
             'title': 'Project 9',
-            'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 3.6364,
-            'evaluator': evaluate_proj9,
-        },
-        'proj10': {
-            'title': 'Project 10',
             'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
-            'evaluator': evaluate_proj10,
+            'weight': 4,
+            'evaluator': evaluate_proj9,
         },
         'proj11': {
             'title': 'Project 11',
             'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj11,
+        },
+        'lab': {
+            'title': 'Lab participation',
+            'due_time': datetime(year=2024, month=5, day=2, hour=23, minute=59, second=59),
+            'weight': 4,
+            'points': 4,
+        },
+        'final': {
+            'title': 'Final exam',
+            'due_time': datetime(year=2024, month=5, day=8, hour=23, minute=59, second=59),
+            'weight': 20,
+            'points': 100,
         },
     }
 }
@@ -1008,171 +1019,10 @@ def admin_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]
 # To add a missing student, just skip step 1, and put only that
 # one student name below. It will add that student to the accounts.
 def initialize_accounts() -> None:
-    student_list = '''
-Adair,Britton Brosh
-Adair,Katelynn Mae
-Aguirre Herrera,Emil Josue
-Aldana,Bryan D
-Alserhan,Shdan Mohammad Sul
-Anderson II,Will Turner
-Andrade,Dmetri Arnaldo
-Arigbede,Adedayo J
-Bailey,Zack Kyle
-Baranczuk,Ethan C
-Bean,Tyler James Richard
-Bentley,Faith E
-Blake,Kobe Jamal
-Bodishbaugh,Jake A
-Braddy,Hunter W
-Bullard,Harrison Jeffrey
-Calhoun,Nicholas R
-Cassels,Lauren
-Castaneda,Alan
-Chance,Evan K
-Childers,Cade G
-Clelland,Timothy J
-Coffman,Ethan J
-Cooper,Cole
-Corona,Juju
-Craddock,Matthew James
-Crosby,Chloe L
-Davis,Ashton Brian
-Debose Laughton,Lucas M
-Delgado,Alain A
-Devaney,Brian Patrick
-Dodia,Dhairya Ritesh
-Dou,Madison R
-Dunn,Bradley J
-Elashwah,Nada
-Elliott,Cameron B
-Evans,Brigham Kennedy
-Ewing,Timothy Shane
-Eyres,Ian P
-Favela-Romo,Tania
-Fitzgerl,William Edward
-Florini,Joseph J
-Gashler,Mike
-Golson,Conor Nolan
-Gordin,Daniel Alexander
-Graham,Jackson Foster
-Green,Ethan
-Green,Matthew Clark
-Guin,Joshua
-Gunderman,Benjamin Owen
-Guo,Jay
-Gutierrez,Rover Juliann Belisario
-Hamilton,Jayden Greggory
-Hernandez,Diana
-Herring,Nicholas Wade
-Hinkle,Tate B
-Hoang,Amy
-Hogue,Lucas Timothy
-Holland,Gavin Alexander
-Hughes,Jacob Ryan
-Iqbal,Faria
-Jachim,Nicholas Jeffrey
-Johnson,Garrett David
-Jones,Kyler
-Kavi,Alekhya
-Kay,Dantea
-Keck,Caroline Elise
-Kessler,Zachary P
-Key,Brandon L
-Khan,Ahmed
-Khan,Ali Mohammad
-Koonce,Shane C
-Landivar Scott,Leonardo
-Lee,A'Darius Jamal
-Lemon,McKayla Jana
-Long,Jason Michael
-Luceri IV,Frank Anthony
-Lucero,Kevin D
-Lwando,Alex Mwelwa
-Mahan,Hayden C
-Mallapally,Varun R
-Martinez,Madison Miranda
-McCollum,Micah Lee
-McDougall,Ethan A
-McMullen,Isaac Hudson
-Montano,Adam Ethan
-Morgan,Brady A
-Morris,Lillian Mikayla
-Murphy,Daniel Joseph
-Name
-Navarro,Amanda Rose Perez
-Nguyen,Minh Duy
-Nieves,Eduardo
-Ninh,Khang D
-Norden,Shane Keith
-Northington,Peyton E
-Palencia,Elmer
-Panda,Nandita
-Pham,Tyler H
-Phifer,Colin Thomas
-Phillips,Isaac Michael
-Pinkerton,Jacob Ryan
-Proctor,Timothy Cole
-Pumford,Milo
-Pyburn,William James
-Quach,Katelyn T
-Ramsey,Landon Scott
-Raper,Jacob H
-Reeves,Trevor Dean
-Rhame,Marlan L
-Richardson,Elizabeth Grace
-Ridgeway,Mary-Claire Mayuga
-Rivas,Daniel Omar
-Roberts,Warren Lee
-Robertson,Logan P
-Rocha,Jonathan A
-Rodriguez,Aaron
-Rodriguez,Daniel Tomas
-Rogers,Cody P
-Rose,Eli J
-Saenz,Brian
-Salazar,Adrian Christofer
-Sanchez,Tony
-Sandoval,Christian A
-Schlageter,Dylan Hufton
-Schroeder,Tyler James
-Serna-Aguilera,Manuel
-Shanti,Raheem Bassam
-Shufelt III,James Peter
-Smith,Dalton D
-Smith,Nicholas Henry
-Smith,Sarah Mei
-Stelting,Brennan C
-Stroud,Dylan T
-Stuart,Renee M
-Suresh Babu,Siddarth
-Thompson,Gabriel Bishop
-Trudo,Todd A
-Trujillo,Marco
-Van Norman IV,Russell Howard
-Vangoor,Santosh R
-Verma,Akshath Akhilesh
-Villalobos,Christian A
-Wade,Randalll G
-Watson,Carter J
-White,Phoebe Katherine
-Wilkins,Dylan Jay
-Wilkins,Eric Fritsch
-Wilkinson,Matthew M
-Williams,Bryan C
-Williams,Draper Bernard
-Wilson,Adam J
-Wilson,Nathaniel L
-Wise,Jacob M
-Young,Caleb S
-Young,Eli
-Zheng,Hu
-'''
-    names = student_list.split('\n')
     try:
         accounts:Dict[str,Any] = autograder.load_accounts(course_desc['accounts'])
     except:
         accounts = {}
-    autograder.add_students(names, accounts)
     autograder.save_accounts(course_desc['accounts'], accounts)
 
 if __name__ == "__main__":
