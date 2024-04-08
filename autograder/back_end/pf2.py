@@ -10,9 +10,13 @@ import re
 # Returns the first number in the string.
 # Throws if there is not one.
 def next_num(s:str) -> float:
-    results = re.search(f'[-+\d.e]+', s)
+    results = re.search(f'[-\d.]+[-+\d.e]*', s)
     if results:
-        return float(results.group())
+        try:
+            f = float(results.group())
+        except:
+            raise ValueError(f'"{results.group()}" looks like a number, but cannot be cast to a float')
+        return f
     else:
         raise ValueError('No number found')
 

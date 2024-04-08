@@ -5,6 +5,8 @@ from datetime import datetime
 from threading import Lock
 import autograder
 import re
+import os
+import json
 
 # Returns the first number in the string.
 # Throws if there is not one.
@@ -475,8 +477,7 @@ def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     try:
         args:List[str] = []
-        input = '''1
-xxx
+        input = '''
 '''
         output = autograder.run_submission(submission, args, input, False)
     except Exception as e:
@@ -491,10 +492,56 @@ xxx
             'It looks like an error was raised.',
             args, input, output
         )
-    if output.find('xxx') < 0:
+    if not 'folder' in submission:
         return autograder.reject_submission(submission,
-            'Could not find xxx',
-        args, input, output
+            'Internal error: Expected "folder" in the submission.',
+            args, input, output
+        )
+    
+    # Find the Jupyter notebook
+    notebook_filename = ''
+    for path, folders, files in os.walk(submission['folder']):
+        for filename in files:
+            _, ext = os.path.splitext(filename)
+            if ext == '.ipynb':
+                notebook_filename = os.path.join(path, filename)
+                break
+
+    # Load the Jupyter notebook
+    try:
+        with open(notebook_filename, 'r') as f:
+            notebook_content = f.read()
+    except:
+        return autograder.reject_submission(submission,
+            f'Unable to parse {notebook_filename}',
+            args, input, output
+        )
+
+    # Check the notebook for some key parts
+    if not notebook_content.find('markdown') >= 0:
+        return autograder.reject_submission(submission,
+            f'Expected a markdown cell in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('.normal') >= 0:
+        return autograder.reject_submission(submission,
+            f'Expected random values to be drawn from a normal distribution in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('matplotlib inline') >= 0:
+        return autograder.reject_submission(submission,
+            f'Expected inline plots in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('.scatter') >= 0:
+        return autograder.reject_submission(submission,
+            f'Expected a scatter plot in the notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('.bar') >= 0:
+        return autograder.reject_submission(submission,
+            f'Expected a bar chart in the notebook: {notebook_filename}',
+            args, input, output
         )
 
     # Accept the submission

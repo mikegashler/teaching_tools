@@ -446,8 +446,20 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
     t.append('<td></td></tr>\n')
     p.append('\n')
 
-    # Rows 4 on
-    row_index = 4
+    # Row 4
+    t.append('<tr><td></td><td>Due date</td>')
+    p.append(',Due date')
+    for proj_id in course_desc['projects']:
+        proj = course_desc['projects'][proj_id]
+        due_time = proj['due_time']
+        due_str = f'{due_time.year}-{due_time.month}-{due_time.day}'
+        t.append(f'<td>{due_str}</td>')
+        p.append(f',{due_str}')
+    t.append('<td></td></tr>\n')
+    p.append('\n')
+
+    # Rows 5 on
+    row_index = 5
     names = sorted(accounts.keys())
     for name in names:
         if len(student) > 0 and name != student:
@@ -466,15 +478,14 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
             proj_title_clean = proj['title'].replace(' ', '_')
             due_time = proj['due_time']
             score = float(acc[proj_title_clean] if proj_title_clean in acc else 0.)
+            eq += f'+{chr(col_index)}2*{chr(col_index)}{row_index}/{chr(col_index)}3'
             if proj_title_clean in acc or now_time >= due_time:
                 t.append(f'<td>{score}</td>')
                 p.append(f',{score}')
                 weighted_points += weight * score / proj_points
-                eq += f'+{chr(col_index)}2*{chr(col_index)}{row_index}/{chr(col_index)}3'
             else:
-                due_str = f'Due {due_time.year}-{due_time.month}-{due_time.day}'
-                t.append(f'<td>{due_str}</td>')
-                p.append(f',{due_str}')
+                t.append(f'<td></td>')
+                p.append(f',')
             col_index += 1
         t.append(f'<td>{(weighted_points * 100. / sum_weight):.2f}</td></tr>\n')
         eq += f')*100/{chr(col_index)}2'
