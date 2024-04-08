@@ -20,15 +20,25 @@ def next_num(s:str) -> float:
     else:
         raise ValueError('No number found')
 
+def basic_checks(args:List[str], input:str, output:str) -> None:
+    if output.find('error:') >= 0:
+        raise autograder.RejectSubmission(
+            'It looks like there were errors.',
+            args, input, output,
+        )
+    if output.find('segmentation fault') >= 0:
+        raise autograder.RejectSubmission(
+            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
+            args, input, output,
+        )
+
 def evaluate_proj1(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['aaa', 'bbb', 'ccc']
-        input = '''Aloysius
+
+    args = ['aaa', 'bbb', 'ccc']
+    input = '''Aloysius
 8'''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
+    output = autograder.run_submission(submission, args, input)
     expected = '''The arguments passed in were:
 arg 1 = aaa
 arg 2 = bbb
@@ -48,7 +58,7 @@ Thanks for stopping by. Have a nice day!
 
 '''
     if output != expected:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'The output does not match the expected output.',
             args, input, output,
             f'Expected output: <pre class="code">{expected}</pre><br><br>',
@@ -59,9 +69,8 @@ Thanks for stopping by. Have a nice day!
 
 def evaluate_proj2(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: not debug mode, exactly 8 items
-    try:
-        args:List[str] = []
-        input = '''alpha
+    args:List[str] = []
+    input = '''alpha
 beta
 charlie
 delta
@@ -70,34 +79,22 @@ flag
 gum
 hair
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     if output.find('debug mode') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'I did not pass in the "debug" flag, but it still ran in debug mode!',
             args, input, output,
         )
     if output.find('delta') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'The words in the lexicon were not displayed when not in debug mode.',
             args, input, output,
         )
 
     # Test 2: debug mode, long list
-    try:
-        args = ['debug']
-        input = '''alpha
+    args = ['debug']
+    input = '''alpha
 beta
 charlie
 delta
@@ -118,29 +115,26 @@ rascal
 sorry
 tricky
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
+    output = autograder.run_submission(submission, args, input)
     if output.find('debug mode') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'When I passed in the "debug" flag, it did not print that it was running in debug mode. (See step 2.j)',
             args, input, output,
         )
     if output.find('delta') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'The words in the lexicon were not displayed when in debug mode.',
             args, input, output,
         )
     if output.find('rascal') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'I was able to enter more than 8 words into the lexicon. (See step 5.a)',
             args, input, output,
         )
 
     # Test 3: superfluous argument
-    try:
-        args = ['debug', 'salmon']
-        input = '''alpha
+    args = ['debug', 'salmon']
+    input = '''alpha
 beta
 charlie
 delta
@@ -161,11 +155,9 @@ rascal
 sorry
 tricky
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
+    output = autograder.run_submission(submission, args, input)
     if output.find('delta') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'When I passed in a superfluous argument, it did not crash. (See step 2.j)',
             args, input, output,
         )
@@ -175,62 +167,46 @@ tricky
 
 def evaluate_proj3(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: Make sure the name was changed and it prints words entered so far
-    try:
-        args:List[str] = []
-        input = '''1
+    args:List[str] = []
+    input = '''1
 alpha
 beta
 gamma
 
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     if output.find('Aloysius') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'You were supposed to change the name. See step 2.b.',
             args, input, output,
         )
     if output.find('beta') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'When the "quiet" flag is not used, you are supposed to print the words that have been entered so far.',
             args, input, output,
         )
 
     # Test 2: Make sure the quiet flag works
-    try:
-        args = ['quiet']
-        input = '''1
+    args = ['quiet']
+    input = '''1
 alpha
 beta
 gamma
 
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
+    output = autograder.run_submission(submission, args, input)
     if output.find('beta') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'When the "quiet" flag is used, you are not supposed to print the words that have been entered so far.',
             args, input, output,
         )
 
     # Test 3: Make sure it can handle a lot of words and the tear-down works
-    try:
-        args = ['quiet']
-        input = '''1
+    args = ['quiet']
+    input = '''1
 alligator
 babboon
 cat
@@ -251,18 +227,16 @@ pig
 2
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
+    output = autograder.run_submission(submission, args, input)
     narwhal_spot = output.rfind('narwhal')
     elephant_spot = output.rfind('elephant')
     if narwhal_spot < 0 or elephant_spot < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected the tear-down to print the lexicon in reverse order. But at least some of the animals I pushed on the stack were not printed!',
             args, input, output,
         )
     if elephant_spot < narwhal_spot:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'The list was not correctly reversed.',
             args, input, output,
         )
@@ -272,9 +246,8 @@ pig
 
 def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''3
+    args = ['quiet']
+    input = '''3
 #########
 #   #   #
 #   #   #
@@ -289,33 +262,21 @@ def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
 4
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     if output.find('#///#   #') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Flood fill did not work correctly. It should have filled the left-side box with slashes, but left the right-side box empty.',
             args, input, output,
         )
 
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''3
+    args = ['quiet']
+    input = '''3
 ###### ######
 #   #   #   #
 #       #   #
-    #   #   #
+#   #   #
 ## ##########
 
 5
@@ -326,21 +287,10 @@ x
 4
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     if output.find('#xxx#xxx#   #') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Flood fill did not work correctly. It should have filled the left two regions with "x"s, but left the right-most region empty.',
             args, input, output,
         )
@@ -350,9 +300,8 @@ x
 
 def evaluate_proj5(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: Test Boggle output
-    try:
-        args = ['quiet']
-        input = '''3
+    args = ['quiet']
+    input = '''3
 ijkl
 mnop
 qrst
@@ -449,21 +398,10 @@ wrist
 6
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     if output.find('aaaaaaaa') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             f'When the "quiet" flag is used, you are not supposed to print all the words in your lexicon.',
             args, input, output,
         )
@@ -471,24 +409,24 @@ wrist
                  'knops', 'knots', 'lost', 'minors',
                  'plonk', 'storm', 'urns']:
         if output.find(word) < 0:
-            return autograder.reject_submission(submission,
+            raise autograder.RejectSubmission(
                 f'Failed to find the word "{word}".',
                 args, input, output,
             )
     for word in ['poop', 'tot']:
         if output.find(word) >= 0:
-            return autograder.reject_submission(submission,
+            raise autograder.RejectSubmission(
                 f'It looks like your implementation does not prevent letters from being used multiple times. For example, your implementation reported the invalid word "{word}".',
                 args, input, output,
             )
     for word in ['salad', 'salmon', 'taco', 'wrist', 'six']:
         if output.find(word) >= 0:
-            return autograder.reject_submission(submission,
+            raise autograder.RejectSubmission(
                 f'Found the invalid word "{word}". (Make sure you are not printing all the words in your lexicon. That will cause the autograder to think you are finding them in the CharMatrix.)',
                 args, input, output,
             )
     if output.find('porn') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             f'Found the word "porn", which was not even in the lexicon!',
             args, input, output,
         )
@@ -498,26 +436,14 @@ wrist
 
 def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if the unit test passes
-    try:
-        args = ['quiet']
-        input = '''7
+    args = ['quiet']
+    input = '''7
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     if output.find('passed') < 0 and output.find('Passed') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'The unit test did not pass. (Did not find the string "passed" in the output.)',
             args, input, output,
         )
@@ -527,9 +453,8 @@ def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
 
 def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: Sort a very small list
-    try:
-        args = ['quiet']
-        input = '''1
+    args = ['quiet']
+    input = '''1
 monkey
 1 salad
 alligator
@@ -541,30 +466,19 @@ zebra
 2
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     words_in_order = ['zebra', 'monkey', 'alligator', 'pizza', 'cheese', 'salad']
     prev = -1
     for i in range(len(words_in_order)):
         pos = output.rfind(words_in_order[i])
-        if i < 0:
-            return autograder.reject_submission(submission,
+        if pos < 0:
+            raise autograder.RejectSubmission(
                 f'Expected to find the word {words_in_order[i]} in the output.',
                 args, input, output,
             )
         elif pos <= prev:
-            return autograder.reject_submission(submission,
+            raise autograder.RejectSubmission(
                 f'The sorted order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
                 args, input, output,
             )
@@ -572,35 +486,32 @@ zebra
     comp = 'comparisons:'    
     comp_pos = output.find(comp)
     if comp_pos < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             f'Did not find the string "comparisons: " in your output. See step 2.d.',
             args, input, output,
         )
     comp_pos += len(comp)
     comp_val = next_num(output[comp_pos:])
     if comp_val <= 6 or comp_val >= 16:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             f'The number of comparisons performed ({comp_val}) is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
 
     # Test 2: Sort a bigger list
-    try:
-        args = ['quiet']
-        input = '1\n' + ('xyz\n' * 1024) + '\n8\n0\n'
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
+    args = ['quiet']
+    input = '1\n' + ('xyz\n' * 1024) + '\n8\n0\n'
+    output = autograder.run_submission(submission, args, input)
     comp = 'comparisons:'
     comp_pos = output.find(comp)
     if comp_pos < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             f'Did not find the string "comparisons: " in your output. See step 2.d.',
             args, input, output,
         )
     comp_val = next_num(output[comp_pos:])
     if comp_val <= 5118 or comp_val >= 10241:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
             args, input, output,
         )
@@ -610,9 +521,8 @@ zebra
 
 def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''9
+    args = ['quiet']
+    input = '''9
 /var/www/autograder/test_data/db.csv
 10
 0
@@ -620,53 +530,41 @@ dog
 fish
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     fish_index = output.find('fish')
     if fish_index >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     carrot_index = output.find('carrot')
     if carrot_index >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     brown_index = output.find('brown')
     if brown_index < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected the row with doughnut to appear in the output',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     white_index = output.find('white')
     if white_index < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected the row with eggs to appear in the output',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     if white_index < brown_index:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected the doughnut row to come before the eggs row',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
 
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''9
+    args = ['quiet']
+    input = '''9
 /var/www/autograder/test_data/db.csv
 10
 2
@@ -674,40 +572,29 @@ fish
 4
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     eggs_pos = output.find('eggs')
     if eggs_pos >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Did not expect the eggs row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     eggs_pos = output.find('doughnut')
     if eggs_pos >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Did not expect the doughnut row to be in the output. Did you use smart_compare for all comparisons?',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     carrot_pos = output.find('carrot')
     if carrot_pos < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected the carrot row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
     fish_pos = output.find('fish')
     if fish_pos < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected the fish row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
@@ -717,9 +604,8 @@ fish
 
 def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''1
+    args = ['quiet']
+    input = '''1
 apple
 1 zither
 cheese
@@ -746,31 +632,19 @@ anaa
 11
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
-    
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)    
     inst_pos = output.find('instantiated:')
     inst_val = next_num(output[inst_pos:])
     dele_pos = output.find('deleted:')
     dele_val = next_num(output[dele_pos:])
     if inst_val < 7:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'The total number of instantiations is too small. It looks like you are not counting instantiations properly.',
             args, input, output,
         )
     if dele_val + 2 < inst_val:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'There were more instantiations than deletions. This suggests you did not clean up memory properly. (Two more instantiations than deletions are allowed because of the global CharMap and the global Dataset. But all other instances should be deleted.)',
             args, input, output,
         )
@@ -780,9 +654,8 @@ anaa
 
 def evaluate_proj10(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''12
+    args = ['quiet']
+    input = '''12
 taco
 acotay
 12
@@ -796,31 +669,20 @@ taco
 13
 pineapple
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
     if output.find('iceray') >= 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Did not expect to find "iceray" in the output. I did not query for "rice"!',
             args, input, output,
         )
     if output.find('ineapplepay') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected to find "ineapplepay" in the output.',
             args, input, output,
         )
     if output.find('acotay') < 0:
-        return autograder.reject_submission(submission,
+        raise autograder.RejectSubmission(
             'Expected to find "acotay" in the output.',
             args, input, output,
         )
@@ -830,9 +692,8 @@ pineapple
 
 def evaluate_proj11(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
-    try:
-        args = ['quiet']
-        input = '''14
+    args = ['quiet']
+    input = '''14
 salmon
 14
 money
@@ -852,24 +713,23 @@ ant
 15
 0
 '''
-        output = autograder.run_submission(submission, args, input)
-    except Exception as e:
-        return autograder.reject_submission(submission, str(e))
-    if output.find('error:') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there were errors.',
-            args, input, output,
-        )
-    if output.find('segmentation fault') >= 0:
-        return autograder.reject_submission(submission,
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
-            args, input, output,
-        )
-    if output.find('xxx') < 0:
-        return autograder.reject_submission(submission,
-            'Did not find xxx.',
-            args, input, output,
-        )
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
+    words_in_order = ['ant', 'banana', 'money', 'salmon', 'tarantula', 'zebra']
+    prev = -1
+    for i in range(len(words_in_order)):
+        pos = output.rfind(words_in_order[i])
+        if pos < 0:
+            raise autograder.RejectSubmission(
+                f'Expected to find the word {words_in_order[i]} in the output.',
+                args, input, output,
+            )
+        elif pos <= prev:
+            raise autograder.RejectSubmission(
+                f'The order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
+                args, input, output,
+            )
+        prev = pos
 
     # Accept the submission
     return accept_submission(submission)

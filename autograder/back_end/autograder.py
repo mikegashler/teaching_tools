@@ -10,7 +10,8 @@ import threading
 import random
 import string
 import sys
-from subprocess import STDOUT, check_output, SubprocessError, CalledProcessError
+import subprocess
+from subprocess import STDOUT, SubprocessError, CalledProcessError
 import diff
 
 os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
@@ -66,20 +67,23 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
     try:
         # Launch it
         if sandbox:
-            check_output(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stderr=STDOUT, shell=True, timeout=5)
-            output = check_output(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
+            subprocess.run(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
+            cp = subprocess.run(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            output = cp.stdout
         else:
-            output = check_output(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stderr=STDOUT, shell=True, timeout=30)
-    except CalledProcessError:
+            cp = subprocess.run(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            output = cp.stdout
+    except CalledProcessError as cpe:
         print(traceback.format_exc(), file=sys.stderr)
-        output = b"error: non-zero return code. (Your program should return 0 if it is successful.)"
-    except SubprocessError:
+        raise RejectSubmission('There was an error running this submission', args, input, f"error: non-zero return code. (Your program should return 0 if it is successful.): {str(cpe)}")
+    except SubprocessError as se:
         print(traceback.format_exc(), file=sys.stderr)
-        output = b"error: Timed out. (This usually indicates an endless loop in your code.)"
-    except:
+        raise RejectSubmission('There was an error running this submission', args, input, f"error: Timed out. (This usually indicates an endless loop in your code.): {str(se)}")
+    except Exception as e:
         output = b"error: unrecognized error."
         print('Unrecognized error:')
         print(traceback.format_exc(), file=sys.stderr)
+        raise RejectSubmission('There was an error running this submission', args, input, f"Unrecognized error: {str(e)}")
 
     # Clean the output
     max_output_size = 2000000
@@ -246,36 +250,13 @@ def display_data(filename:str) -> str:
     p.append('</pre><br><br>')
     return ''.join(p)
 
-# Makes a page describing why the submission was rejected
-def reject_submission(
-        submission:Mapping[str,Any], 
-        message:str, 
-        args:List[str]=[], 
-        input:str='', 
-        output:str='', 
-        post_message:str='') -> Mapping[str, Any]:
-    p:List[str] = []
-    p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
-    p.append(f'{message}<br><br>')
-    if len(args) > 0:
-        p.append(f'Args passed in: <pre class="code">{" ".join(args)}</pre><br><br>')
-    if len(input) > 0:
-        p.append(f'Input fed in: <pre class="code">{input}</pre><br><br>')
-    p.append(f'Output: <pre class="code">{output}</pre><br><br>')
-    if len(post_message) > 0:
-        p.append(post_message)
-    p.append('Please fix the issue and resubmit.')
-
-    # Save the feedback
-    results = ''.join(p)
-    if 'folder' in submission:
-        start_folder = submission['folder']
-        with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
-            f.write(results)
-
-    return {
-        'results': results,
-    }
+class RejectSubmission(RuntimeError):
+    def __init__(self, message:str, args:List[str], input:str, output:str, extra:str='') -> None:
+        super().__init__(message)
+        self._args = args
+        self.input = input
+        self.output = output
+        self.extra = extra
 
 def accept_submission(
         submission:Mapping[str,Any], 
@@ -912,13 +893,15 @@ def receive_submission(
         folder = unpack_and_check_submission(params, course_desc['course_short'], title_clean, session.name)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
+        p:List[str] = []
+        p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
+        p.append(f'{str(e)}<br><br>')
+        p.append('Please fix the issue and resubmit.')
         return {
             'succeeded': False,
-            'page': reject_submission({
-                'succeeded': False, 
-                'account': account, 
-                'title_clean': title_clean
-            }, str(e)),
+            'page': {
+                'results': ''.join(p),
+            },
         }
     
     return {
@@ -1063,6 +1046,20 @@ def eval_thread(
     # Evaluate the submission
     try:
         the_job.results = eval_func(submission)
+    except RejectSubmission as rejection:
+        p:List[str] = []
+        p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
+        p.append(f'{str(rejection)}<br><br>')
+        if len(rejection._args) > 0:
+            p.append(f'Args passed in: <pre class="code">{" ".join(rejection._args)}</pre><br><br>')
+        if len(rejection.input) > 0:
+            p.append(f'Input fed in: <pre class="code">{rejection.input}</pre><br><br>')
+        p.append(f'Output: <pre class="code">{rejection.output}</pre><br><br>')
+        p.append(rejection.extra)
+        p.append('Please fix the issue and resubmit.')
+        the_job.results = {
+            'results': ''.join(p),
+        }
     except Exception as e:
         # Log the error
         random_id = make_random_id()
@@ -1072,19 +1069,18 @@ def eval_thread(
         print(traceback.format_exc(), file=sys.stderr)
 
         # Generate some feedback
-        p:List[str] = []
-        p.append(f'<font color="red">I am very sorry, the submission server crashed while evaluating this submission. Please e-mail the instructor the following ID: {random_id} to help locate the relevant information for this crash in the server logs.</font><br><br>')
-
-        # Save the feedback
-        results = ''.join(p)
-        if 'folder' in submission:
-            start_folder = submission['folder']
-            with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
-                f.write(results)
-
+        p = []
+        p.append(f'<font color="red">The submission server crashed while attempting to evaluate this submission. (This is probably an issue with the server rather than your code.) Please e-mail the instructor the following ID: {random_id} to help locate the relevant information for this crash in the server logs.</font><br><br>')
         the_job.results = {
-            'results': results,
+            'results': ''.join(p),
         }
+
+    # Save the feedback
+    if 'folder' in submission:
+        start_folder = submission['folder']
+        with open(os.path.join(start_folder, '_feedback.txt'), 'w') as f:
+            f.write(the_job.results['results'])
+
 
 # Makes a job id
 def make_random_id() -> str:
