@@ -124,11 +124,12 @@ def unpack_and_check_submission(params:Mapping[str, Any], course:str, project:st
 
     # Check for forbidden files or folders, and find the run.bash script
     forbidden_folders = [
-        '.DS_Store', 
-        '.mypy_cache', 
-        '__pycache__', 
-        '.git', 
-        '__MACOSX', 
+        '.DS_Store',
+        '.mypy_cache',
+        '__pycache__',
+        '.git',
+        '.ipynb_checkpoints',
+        '__MACOSX',
         '.settings',
         'backup',
         'data',
@@ -455,9 +456,11 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
         for proj_id in course_desc['projects']:
             proj = course_desc['projects'][proj_id]
             weight = proj["weight"]
+            due_time = proj['due_time']
+            if now_time < due_time:
+                weight = 0.
             proj_points = proj["points"]
             proj_title_clean = proj['title'].replace(' ', '_')
-            due_time = proj['due_time']
             score = float(acc[proj_title_clean] if proj_title_clean in acc else 0.)
             eq += f'+{chr(col_index)}2*{chr(col_index)}{row_index}/{chr(col_index)}3'
             if proj_title_clean in acc or now_time >= due_time:
@@ -518,7 +521,23 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p:List[str] = []
     page_start(p, session)
 
-    # Add new students
+    ###############
+    #   Actions   #
+    ###############
+
+
+    # View scores action
+    if 'scores' in params:
+        student = params['scores']
+        if student == 'entire_class':
+            student = ''
+        p.append(make_grades(accounts, course_desc, student))
+        page_end(p)
+        return {
+            'content': ''.join(p),
+        }
+
+    # Add new students action
     if 'newstudents' in params:
         rows = params['newstudents'].split('\n')
         for row in rows:
@@ -546,7 +565,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         save_accounts(str(course_desc['accounts']), accounts)
         print(f'{len(names_to_add)} new student accounts created.<br><br>')
 
-    # Reset a student's password
+    # Reset password action
     if 'resetme' in params:
         if not params['resetme'] in accounts:
             return {
@@ -557,7 +576,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         save_accounts(str(course_desc['accounts']), accounts)
         print(f'Reset password for: {params["resetme"]}')
 
-    # Grant late tokens
+    # Grant late tokens action
     if 'addtoks' in params and 'student' in params:
         if not params['student'] in accounts:
             return {
@@ -568,7 +587,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         save_accounts(str(course_desc['accounts']), accounts)
         print(f'Updated token balance for {params["student"]} to {student_account["toks"]}')
 
-    # Set project score
+    # Set project score action
     if 'project' in params and 'score' in params and 'student' in params:
         if not params['student'] in accounts:
             return {
@@ -579,7 +598,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         save_accounts(str(course_desc['accounts']), accounts)
         print(f'Updated score for {params["student"]} {params["project"]} to {params["score"]}')
 
-    # Set many scores
+    # Set many scores action
     if 'project' in params and 'scores' in params:
         rows = params['scores'].split('\n')
         for row in rows:
@@ -609,13 +628,48 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
             accounts[student_name][params['project']] = int(cells[2])
         save_accounts(str(course_desc['accounts']), accounts)
 
-    # Canonicalize names
+    # Canonicalize names action
     if 'student_names' in params:
         rows = params['student_names'].split('\n')
         output = '<br><pre class="code">' + canonicalize_names(rows, list(accounts.keys())) + '</pre><br><br>'
         p.append(output)
 
-    # Form to reset a password
+
+
+    #############
+    #   Stats   #
+    #############
+
+    p.append(f'<h1>{course_desc["course_long"]}</h1>')
+
+    # Show the project completion rate
+    p.append('<h2>Project completion rates</h2>')
+    p.append(make_project_completion_rates(accounts, course_desc))
+
+
+    #############
+    #   Forms   #
+    #############
+
+    # Vew scores form
+    p.append('<h2>View scores</h2>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student:')
+    p.append('</td><td>')
+    p.append('<select name="scores">')
+    p.append(f'<option value="entire_class">Entire class</option>')
+    for name in sorted(accounts):
+        p.append(f'<option value="{name}">{name}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="View scores">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    # Reset password form
     p.append('<h2>Reset a student\'s password</h3>')
     p.append(f'<form action="{dest_page}"')
     p.append(' method="post" onsubmit="hash_password(\'password\');">')
@@ -634,7 +688,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Form to add new students
+    # Add new students form
     p.append('<h2>Add new students</h3>')
     p.append('<p>The structure should be: last-name-comma-given-name(s). One name per line. No trailing punctuation.</p>')
     p.append(f'<form action="{dest_page}"')
@@ -649,7 +703,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Form to grant late tokens
+    # Grant late tokens form
     p.append('<h2>Grant late tokens</h3>')
     p.append(f'<form action="{dest_page}"')
     p.append(' method="post">')
@@ -672,7 +726,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Form to set project score
+    # Set project score form
     p.append('<h2>Set project score</h3>')
     p.append(f'<form action="{dest_page}"')
     p.append(' method="post">')
@@ -706,7 +760,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Form to identify names
+    # Identify names form
     p.append('<h2>Identify names</h3>')
     p.append('<p>Paste a comma-separated list of student names below.')
     p.append('I will try to identify them and canonicalize them with my records.</p>')
@@ -722,7 +776,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Form to set many project scores
+    # Set many project scores form
     p.append('<h2>Set many project scores</h3>')
     p.append('<p>Names should be canonicalized.</p>')
     p.append(f'<form action="{dest_page}"')
@@ -747,14 +801,6 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('<tr><td></td><td><input type="submit" value="Set many scores">')
     p.append('</td></tr></table>')
     p.append('</form>')
-
-    # Show the project completion rate
-    p.append('<h2>Project completion rates</h2>')
-    p.append(make_project_completion_rates(accounts, course_desc))
-
-    # Show all the scores
-    p.append('<h2>Scores</h2>')
-    p.append(make_grades(accounts, course_desc, ''))
 
     page_end(p)
     return {
@@ -1060,7 +1106,7 @@ def eval_thread(
         the_job.results = {
             'results': ''.join(p),
         }
-    except Exception as e:
+    except BaseException as e:
         # Log the error
         random_id = make_random_id()
         print(f'An internal server error occurred! {random_id}', file=sys.stderr)

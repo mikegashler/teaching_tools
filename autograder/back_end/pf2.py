@@ -491,7 +491,13 @@ zebra
             args, input, output,
         )
     comp_pos += len(comp)
-    comp_val = next_num(output[comp_pos:])
+    try:
+        comp_val = next_num(output[comp_pos:])
+    except ValueError:
+        raise autograder.RejectSubmission(
+            f'Expected a number after "{comp}"',
+            args, input, output,
+        )
     if comp_val <= 6 or comp_val >= 16:
         raise autograder.RejectSubmission(
             f'The number of comparisons performed ({comp_val}) is not consistent with mergesort. Are you counting comparisons correctly?',
@@ -509,7 +515,13 @@ zebra
             f'Did not find the string "comparisons: " in your output. See step 2.d.',
             args, input, output,
         )
-    comp_val = next_num(output[comp_pos:])
+    try:
+        comp_val = next_num(output[comp_pos:])
+    except ValueError:
+        raise autograder.RejectSubmission(
+            f'Expected a number after {comp}',
+            args, input, output,
+        )
     if comp_val <= 5118 or comp_val >= 10241:
         raise autograder.RejectSubmission(
             f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
@@ -603,7 +615,52 @@ fish
     return accept_submission(submission)
 
 def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Test 1: See if it produces the exactly correct output
+
+    # Test 1: Measure baseline values for the number of instantiations and deletions
+    args = ['quiet']
+    input = '''11
+0
+'''
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)    
+    inst_pos = output.find('instantiated:')
+    if inst_pos < 0:
+        raise autograder.RejectSubmission(
+            'Expected the string "instantiated:" to occur in the output',
+            args, input, output,
+        )
+    try:
+        baseline_inst_val = next_num(output[inst_pos:])
+    except ValueError:
+        raise autograder.RejectSubmission(
+            'Expected a number after "instantiated:"',
+            args, input, output,
+        )
+    dele_pos = output.find('deleted:')
+    if dele_pos < 0:
+        raise autograder.RejectSubmission(
+            'Expected the string "deleted:" to occur in the output',
+            args, input, output,
+        )
+    try:
+        baseline_dele_val = next_num(output[dele_pos:])
+    except ValueError:
+        raise autograder.RejectSubmission(
+            'Expected a number after "deleted:"',
+            args, input, output,
+        )
+    if baseline_inst_val >= 7:
+        raise autograder.RejectSubmission(
+            'I did not even do anything. How many global objects do you have?',
+            args, input, output,
+        )
+    if baseline_dele_val > baseline_inst_val:
+        raise autograder.RejectSubmission(
+            'How do you have more deletions than instantiations?',
+            args, input, output,
+        )
+
+    # Test 2: See if the gap is the same
     args = ['quiet']
     input = '''1
 apple
@@ -635,17 +692,45 @@ anaa
     output = autograder.run_submission(submission, args, input)
     basic_checks(args, input, output)    
     inst_pos = output.find('instantiated:')
-    inst_val = next_num(output[inst_pos:])
+    if inst_pos < 0:
+        raise autograder.RejectSubmission(
+            'Expected the string "instantiated:" to occur in the output',
+            args, input, output,
+        )
+    try:
+        inst_val = next_num(output[inst_pos:])
+    except ValueError:
+        raise autograder.RejectSubmission(
+            'Expected a number after "instantiated:"',
+            args, input, output,
+        )
     dele_pos = output.find('deleted:')
-    dele_val = next_num(output[dele_pos:])
+    if dele_pos < 0:
+        raise autograder.RejectSubmission(
+            'Expected the string "deleted:" to occur in the output',
+            args, input, output,
+        )
+    try:
+        dele_val = next_num(output[dele_pos:])
+    except ValueError:
+        raise autograder.RejectSubmission(
+            'Expected a number after "deleted:"',
+            args, input, output,
+        )
     if inst_val < 7:
         raise autograder.RejectSubmission(
             'The total number of instantiations is too small. It looks like you are not counting instantiations properly.',
             args, input, output,
         )
-    if dele_val + 2 < inst_val:
+    if dele_val > inst_val:
         raise autograder.RejectSubmission(
-            'There were more instantiations than deletions. This suggests you did not clean up memory properly. (Two more instantiations than deletions are allowed because of the global CharMap and the global Dataset. But all other instances should be deleted.)',
+            'The total number of deletions should not be larger than the number of instantiations. (This often means you are passing objects by value that lack a copy constructor.)',
+            args, input, output,
+        )
+
+    if inst_val - dele_val != baseline_inst_val - baseline_dele_val:
+        raise autograder.RejectSubmission(
+            'The gap between instantiations and deletions changed when more code was run. This suggests you probably have memory leaks that are not just due to global variables.',
             args, input, output,
         )
 
@@ -704,7 +789,7 @@ banana
 14
 zebra
 14
-ant
+antelope
 15
 15
 15
@@ -715,7 +800,7 @@ ant
 '''
     output = autograder.run_submission(submission, args, input)
     basic_checks(args, input, output)
-    words_in_order = ['ant', 'banana', 'money', 'salmon', 'tarantula', 'zebra']
+    words_in_order = ['antelope', 'banana', 'money', 'salmon', 'tarantula', 'zebra']
     prev = -1
     for i in range(len(words_in_order)):
         pos = output.rfind(words_in_order[i])
@@ -743,28 +828,28 @@ course_desc:Mapping[str,Any] = {
             'title': 'Project 1',
             'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj1,
         },
         'proj2': {
             'title': 'Project 2',
             'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj2,
         },
         'proj3': {
             'title': 'Project 3',
             'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj3,
         },
         'proj4': {
             'title': 'Project 4',
             'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 3.6364,
+            'weight': 4,
             'evaluator': evaluate_proj4,
         },
         'midterm1': {

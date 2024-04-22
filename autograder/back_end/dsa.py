@@ -346,9 +346,15 @@ def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
             'There should be 8 dimensions in the Numpy representation of this data, but your output indicates that it found fewer than 8 principal components.',
         args, input, output
         )
-    zero_eig = next_num(output[zero_colon_pos + 3:])
-    five_eig = next_num(output[five_colon_pos + 3:])
-    six_eig = next_num(output[six_colon_pos + 3:])
+    try:
+        zero_eig = next_num(output[zero_colon_pos + 3:])
+        five_eig = next_num(output[five_colon_pos + 3:])
+        six_eig = next_num(output[six_colon_pos + 3:])
+    except ValueError:
+        raise autograder.RejectSubmission(
+            'Expected a number after "0:", "5:", and "6:".',
+        args, input, output
+        )
     if zero_eig > 50.:
         raise autograder.RejectSubmission(
             'Your first root-eigenvalue is too big. Did you center and standardize the columns before computing eigenvalues?',
@@ -390,13 +396,13 @@ def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
+    
+    # Find the Jupyter notebook
     if not 'folder' in submission:
         raise autograder.RejectSubmission(
             'Internal error: Expected "folder" in the submission.',
             args, input, output
         )
-    
-    # Find the Jupyter notebook
     notebook_filename = ''
     for path, folders, files in os.walk(submission['folder']):
         for filename in files:
@@ -426,11 +432,6 @@ def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
             f'Expected random values to be drawn from a normal distribution in your notebook: {notebook_filename}',
             args, input, output
         )
-    if not notebook_content.find('matplotlib inline') >= 0:
-        raise autograder.RejectSubmission(
-            f'Expected inline plots in your notebook: {notebook_filename}',
-            args, input, output
-        )
     if not notebook_content.find('.scatter') >= 0:
         raise autograder.RejectSubmission(
             f'Expected a scatter plot in the notebook: {notebook_filename}',
@@ -448,15 +449,75 @@ def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
 def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
-    input = '''1
-xxx
+    input = '''
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
-    if output.find('xxx') < 0:
+
+    # Find the Jupyter notebook
+    if not 'folder' in submission:
         raise autograder.RejectSubmission(
-            'Could not find xxx',
-        args, input, output
+            'Internal error: Expected "folder" in the submission.',
+            args, input, output
+        )
+    notebook_filename = ''
+    for path, folders, files in os.walk(submission['folder']):
+        for filename in files:
+            _, ext = os.path.splitext(filename)
+            if ext == '.ipynb':
+                notebook_filename = os.path.join(path, filename)
+                break
+
+    # Load the Jupyter notebook
+    try:
+        with open(notebook_filename, 'r') as f:
+            notebook_content = f.read()
+    except:
+        raise autograder.RejectSubmission(
+            f'Unable to parse {notebook_filename}',
+            args, input, output
+        )
+
+    # Check the notebook for some key parts
+    if not notebook_content.find('markdown') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected at least one markdown cell in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('pandas') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected pandas in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('.hist') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected a histogram plot in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('Series') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected Series operations in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('DataFrame') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected DataFrame operations in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('.iloc') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected .iloc operations in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('.loc') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected .loc operations in your notebook: {notebook_filename}',
+            args, input, output
+        )
+    if not notebook_content.find('.drop') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected a .drop operation in your notebook: {notebook_filename}',
+            args, input, output
         )
 
     # Accept the submission
@@ -465,15 +526,55 @@ xxx
 def evaluate_proj10(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
-    input = '''1
-xxx
+    input = '''
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
-    if output.find('xxx') < 0:
+
+    # Find the Jupyter notebook
+    if not 'folder' in submission:
         raise autograder.RejectSubmission(
-            'Could not find xxx',
-        args, input, output
+            'Internal error: Expected "folder" in the submission.',
+            args, input, output
+        )
+    notebook_filename = ''
+    for path, folders, files in os.walk(submission['folder']):
+        for filename in files:
+            _, ext = os.path.splitext(filename)
+            if ext == '.ipynb':
+                notebook_filename = os.path.join(path, filename)
+                break
+
+    # Load the Jupyter notebook
+    try:
+        with open(notebook_filename, 'r') as f:
+            notebook_content = f.read()
+    except:
+        raise autograder.RejectSubmission(
+            f'Unable to parse {notebook_filename}',
+            args, input, output
+        )
+
+    # Check the notebook for some key parts
+    if not notebook_content.find('markdown') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected markdown cells in your notebook: {notebook_filename}. You are supposed to document your work, not just do it.',
+            args, input, output
+        )
+    if not notebook_content.find('matplotlib') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected to find matplotlib in your notebook: {notebook_filename}. Surely you must want to show a plot of something!',
+            args, input, output
+        )
+    if not notebook_content.find('numpy') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected numpy in your notebook: {notebook_filename}. You are supposed to demonstrate all the things we learned this semester. Surely, that must include something from numpy.',
+            args, input, output
+        )
+    if not notebook_content.find('pandas') >= 0:
+        raise autograder.RejectSubmission(
+            f'Expected pandas in your notebook: {notebook_filename}. You are supposed to demonstrate all the things we learned this semester. Surely, that must include something from Pandas.',
+            args, input, output
         )
 
     # Accept the submission
@@ -556,6 +657,12 @@ course_desc:Mapping[str,Any] = {
             'weight': 4,
             'evaluator': evaluate_proj7,
         },
+        'midterm2': {
+            'title': 'Midterm 2',
+            'due_time': datetime(year=2024, month=4, day=9, hour=23, minute=59, second=59),
+            'weight': 20,
+            'points': 75,
+        },
         'proj8': {
             'title': 'Project 8',
             'due_time': datetime(year=2024, month=4, day=16, hour=23, minute=59, second=59),
@@ -576,6 +683,12 @@ course_desc:Mapping[str,Any] = {
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_proj10,
+        },
+        'final': {
+            'title': 'Final exam',
+            'due_time': datetime(year=2024, month=5, day=7, hour=23, minute=59, second=59),
+            'weight': 20,
+            'points': 100,
         },
     },
 }
