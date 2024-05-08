@@ -3,37 +3,42 @@
 # described at http://creativecommons.org/publicdomain/zero/1.0/.
 # ---------------------------------------------------------------
 
-from typing import Mapping, Any, Callable, Optional, Dict, Tuple
+from typing import Mapping, Any, Callable, Optional, Dict
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import ssl
 import webbrowser
 import urllib.parse as urlparse
 from http.cookies import SimpleCookie
-import re
 import json
 from datetime import datetime, timedelta
 import sys
 import os
 import requests
 import time
-import signal
 import traceback
 import threading
 import sd_notify
-import atexit
 import random
 import string
 import tempfile
 
-port = 0
 COOKIE_LEN = 12
-last_save_state_time = datetime.now()
-
-def make_random_id() -> str:
-    return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(8))
 
 def log(s:str) -> None:
-    print(f'{datetime.now()} {s}', file=sys.stderr)
+    #print(f'{datetime.now()} {s}', file=sys.stderr)
+    print(f'{datetime.utcnow()} {s}', file=sys.stderr)
+
+    # # Find where a specific log message is coming from
+    # if s.find('\n') >= 0:
+    #     print('\n'.join(traceback.format_stack())) # print a stack trace with every log entry
+
+def make_random_id(size:int) -> str:
+    return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(size))
+
+def new_session_id() -> str:
+    now = datetime.now()
+    date_str = f'{now.month:02}{now.day:02}{now.minute:02}'
+    return date_str + make_random_id(COOKIE_LEN - len(date_str))
 
 def delay_open_url_helper(url: str, delay: float) -> None:
     time.sleep(delay)
@@ -54,9 +59,8 @@ mime_types = {
     '.zip': 'application/zip',
 }
 
-keep_going = True
 temp_folder = ''
-simpleWebServerPages: Mapping[str, Any] = {}
+page_maker: Callable[['Response',str,Mapping[str,Any],str,str],None]
 ping_sid = '000000000000'
 
 # Finds prefix in line, and returns everything until the next double-quotes
@@ -70,109 +74,17 @@ def extract_named_string(line:str, prefix:str) -> str:
     return line[beg:end]
 
 
-class Session():
-    def __init__(self) -> None:
-        time_now = datetime.now()
-        self.name = '' # The name of the account currently logged in with this session
-        self.last_active_time = time_now
-        self.last_ip = ''
-        self.cookie = ''
 
-    def logged_in(self) -> bool:
-        log(f'logged in as {self.name}')
-        return len(self.name) > 0
-
-    def marshal(self) -> Mapping[str, Any]:
-        return {
-            'name': self.name,
-            'date': self.last_active_time.isoformat(),
-        }
-
-    @staticmethod
-    def unmarshal(ob: Mapping[str, Any]) -> 'Session':
-        sess = Session()
-        sess.name = ob['name']
-        try:
-            sess.last_active_time = datetime.fromisoformat(ob['date'])
-        except ValueError:
-            log(f'Error parsing date: {ob["date"] if "date" in ob else "no_date"}. Defaulting to now')
-            sess.last_active_time = datetime.now()
-        return sess
-
-sessions: Dict[str, Session] = {}
-
-# The first six digits are YYMMDD. The remaining digits are randomly drawn from alphanumerics
-def new_session_id() -> str:
-    now = datetime.now()
-    date_str = f'{now.year - ((now.year // 100) * 100):02}{now.month:02}{now.day:02}'
-    return date_str + ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(COOKIE_LEN - len(date_str)))
-
-def get_or_make_session(session_id:str, ip_address:str, http_method:str, cookie:str) -> Session:
-    recognized = True
-    if not session_id in sessions:
-        sessions[session_id] = Session()
-        recognized = False
-    session = sessions[session_id]
-    session.last_active_time = datetime.now()
-    session.last_ip = ip_address
-    session.cookie = cookie
-    if not recognized:
-        session.cookie += ' [not recognized]'
-        log(f'Made a new session for id {session_id} in {http_method} request for cookie: {cookie}')
-    return session
-
-def unmarshal_state(ob: Mapping[str, Any]) -> None:
-    global sessions
-    ob_ses = ob['sessions']
-    sessions = { ses_id: Session.unmarshal(ob_ses[ses_id]) for ses_id in ob_ses }
-
-def marshal_state() -> Mapping[str, Any]:
-    global sessions
-    now_time = datetime.now()
-    for session_id in sessions:
-        if now_time - sessions[session_id].last_active_time >= timedelta(days=42):
-            log(f'Dropping session {session_id} because it has not been used for 42 days. Now={now_time}, last_active_time={sessions[session_id].last_active_time}')
-    return {
-        'sessions': { session_id: sessions[session_id].marshal() for session_id in sessions if now_time - sessions[session_id].last_active_time < timedelta(days=42) },
-    }
-
-def save_state() -> None:
-    with open('state.json', 'w') as f:
-        f.write(json.dumps(marshal_state(), indent=1))
-    log('state saved')
-
-def load_state() -> None:
-    global sessions
-    global last_save_state_time
-    if os.path.exists('state.json'):
-        with open('state.json', 'r') as f:
-            server_state = json.loads(f.read())
-        log(f'state loaded')
-    else:
-        server_state = {
-            'sessions': {},
-        }
-        log(f'no state.json file. Starting over from scratch')
-    unmarshal_state(server_state)
-    last_save_state_time = datetime.now()
-
-def maybe_save_state() -> None:
-    global last_save_state_time
-    now_time = datetime.now()
-    if now_time - last_save_state_time > timedelta(minutes=15):
-        last_save_state_time = now_time
-        save_state()
-
-class MyRequestHandler(BaseHTTPRequestHandler):
+class Response(BaseHTTPRequestHandler):
     def __init__(self, *args: Any) -> None:
         BaseHTTPRequestHandler.__init__(self, *args)
 
     def log_message(self, format:str, *args:Any) -> None:
         return
 
-    def send_file(self, filename: str, content: str, session_id: str) -> None:
+    def send_file(self, filename: str, content: bytes, session_id: str) -> None:
         self.send_response(200)
-        #self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", "*")
         name, ext = os.path.splitext(filename)
         if ext in mime_types:
             self.send_header('Content-type', mime_types[ext])
@@ -224,44 +136,26 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 
         # Parse cookies
         raw_cookie_text = self.headers.get('Cookie')
-        cookie:SimpleCookie[Any] = SimpleCookie(raw_cookie_text) # type: ignore
+        cookie = SimpleCookie(raw_cookie_text)
         if filename == 'ping.html':
-            self.send_file(filename, 'pong', ping_sid) # special case for ping page
+            self.send_file(filename, b'pong', ping_sid) # special case for ping page
             return
         elif 'sid' in cookie:
             session_id = cookie['sid'].value
-            cookie_str = session_id
             # log(f'Got cookie: {cookie}')
             if len(session_id) != COOKIE_LEN:
                 log(f'Bad session id {session_id}. Making new one.')
                 session_id = new_session_id()
-                cookie_str += f' (invalid. making new one: {session_id})'
             if session_id == ping_sid:
                 log(f'Using the ping session id {session_id}. Making new one.')
                 session_id = new_session_id()
-                cookie_str += f' (ping id? making new one: {session_id})'
         else:
             session_id = new_session_id()
             log(f'No session id in "{cookie}". Making new one: {session_id}')
-            cookie_str = f'(none. making new one: {session_id})'
 
-        # Get content
-        if filename == 'ping.html':
-            print('ping -> pong')
-            self.send_file(filename, 'pong', ping_sid) # special case for ping page
-            return
-        elif filename in simpleWebServerPages:
-            session = get_or_make_session(session_id, ip_address, 'GET', cookie_str)
-            content = simpleWebServerPages[filename](q, session)['content']
-        else:
-            try:
-                with open(filename, 'rb') as f:
-                    content = f.read()
-            except:
-                log(f'current working directory: {os.getcwd()}')
-                traceback.print_exc()
-                content = f'404 {filename} not found.\n'
-        self.send_file(filename, content, session_id)
+        # Generate the response
+        global page_maker
+        page_maker(self, filename, q, session_id, ip_address)
 
     def do_POST(self) -> None:
         ip_address = self.client_address[0]
@@ -277,18 +171,19 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         # The XHR specification forbids clients from setting 'Cookie',
         # so we work around that with 'Brownie' instead.
         brownie_str = self.headers.get('Brownie') or ''
-        brownie:SimpleCookie[Any] = SimpleCookie(brownie_str) # type: ignore
+        brownie = SimpleCookie(brownie_str)
         if 'sid' in brownie:
             session_id = brownie['sid'].value
         else:
             cookie_str = self.headers.get('Cookie')
-            brownie_str = f'{cookie_str} (from cookie header?)'
-            cookie:SimpleCookie[Any] = SimpleCookie(cookie_str) # type: ignore
+            cookie = SimpleCookie(cookie_str)
             if 'sid' in cookie:
                 session_id = cookie['sid'].value
             else:
                 raise ValueError('No cookie in POST.')
-        session = get_or_make_session(session_id, ip_address, 'POST', brownie_str)
+        if len(session_id) != COOKIE_LEN:
+            log(f'Bad session id {session_id}. Making new one.')
+            session_id = new_session_id()
 
         # Parse the content
         ct = self.headers.get('Content-Type') or ''
@@ -298,38 +193,16 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         else:
             content_len = int(self.headers.get('Content-Length') or '')
             post_body = self.rfile.read(content_len)
-            if content_len > 0 and (post_body[0] == 123 or post_body[0] == 91 or post_body[0] == 34): # 123='{', 91='[', 34='"' 
-                try:
-                    params = json.loads(post_body)
-                except:
-                    if post_body == b'[object Object]':
-                        log(f'Error, the javascript side forgot to JSON-encode an object')
-                    else:
-                        log(f'failed to decode JSON: {post_body[:2048]!r}')
-                    params = {}
+            if len(post_body) > 0 and (post_body[0] == ord('{') or post_body[0] == ord('[')):
+                params = json.loads(post_body)
             else:
-                log(f'content_len={content_len}, post_body={str(post_body)}, path={self.path}')
-                q = urlparse.parse_qs(post_body.decode())
-                params = { k:(q[k][0] if len(q[k]) == 1 else q[k]) for k in q }
+                q = urlparse.parse_qs(post_body)
+                q = { k.decode():(q[k][0] if len(q[k]) == 1 else q[k]).decode() for k in q } # type: ignore
+                params = q # type: ignore
 
-        # Generate a response
-        if filename in simpleWebServerPages:
-            response = simpleWebServerPages[filename](params, session)
-            self.send_response(200)
-            #self.send_header("Access-Control-Allow-Origin", "*")
-            if 'content' in response and len(response.keys()) == 1:
-                self.send_header('Content-type', 'text/html')
-                self.end_headers()
-                self.wfile.write(bytes(response['content'], 'utf8'))
-            else:
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(bytes(json.dumps(response), 'utf8'))
-        else:
-            self.send_response(404)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(bytes(f'{{"status":"error","message":"{filename} not found."}}', 'utf8'))
+        # Generate the response
+        global page_maker
+        page_maker(self, filename, params, session_id, ip_address)
 
     # Returns the filename specified for the file
     def parse_multipart_form(self, max_size:int=16_000_000) -> Mapping[str, Any]:
@@ -406,7 +279,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             else:
                 if len(temp_form_folder) == 0:
                     while True:
-                        temp_form_folder = os.path.join(temp_folder, make_random_id())
+                        temp_form_folder = os.path.join(temp_folder, make_random_id(8))
                         if not os.path.exists(temp_form_folder):
                             os.mkdir(temp_form_folder)
                             break
@@ -431,8 +304,10 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             form_data[name] = value
         return form_data
 
-# Let's overload the handle_error method to swallow ConnectionResetErrors
-class MyServer(HTTPServer):
+# Use an inner server to abstract it away, and ensure my own methods don't override
+# any critical operations used by the inner server.
+class InnerServer(HTTPServer):
+    # Let's overload the handle_error method to swallow ConnectionResetErrors
     def handle_error(self, request: Any, client_address: Any) -> None:
         ex_type, _, _ = sys.exc_info()
         if ex_type == ConnectionResetError:
@@ -443,82 +318,99 @@ class MyServer(HTTPServer):
             traceback.print_exc()
             log('-'*40)
 
-def serve_pages(the_port:int, pages:Mapping[str, Callable[[Mapping[str,Any], Session],Any]]) -> None:
-    global port
-    global temp_folder
-    port = the_port
-    signal.signal(signal.SIGTERM, signal_handler)
-    atexit.register(exit_handler)
 
-    global simpleWebServerPages
-    simpleWebServerPages = pages
-    log(f'Serving on port {port}')
-    httpd = MyServer(('', port), MyRequestHandler)
-
-    load_state()
-    with tempfile.TemporaryDirectory() as td:
-        temp_folder = td
-        global keep_going
-        keep_going = True
-        try:
-            while keep_going:
-                httpd.handle_request() # blocks until a request comes in
-        except KeyboardInterrupt:
-            pass
-        httpd.server_close()
-    save_state()
-    log(f'http server stopped')
-
-# If successful, returns 'pong'.
-# If not, returns some other string describing the problem.
-def ping(timeout:int) -> str:
-    try:
-        global port
-        r = requests.get(f'http://localhost:{port}/ping.html', timeout=timeout)
-        return r.text
-    except:
-        return traceback.format_exc()
-
-# Saves state and joins all the threads
-def graceful_shutdown() -> None:
-    global keep_going
-    if keep_going:
-        keep_going = False
-        ping(1) # This unblocks "httpd.handle_request", so it will notice we want to shut down
-        log(f'Shutting down');
-        time.sleep(0.3) # Give the http thread a moment to shut down
-
-def signal_handler(sig:int, frame) -> None: # type: ignore
-    log(f'Got a SIGTERM')
-    graceful_shutdown()
-    sys.exit(0)
-
-def exit_handler() -> None:
-    graceful_shutdown()
 
 # Thread that pings the server at regular intervals and notifies systemd that it is still running.
 # (This assumes this server is being run as a service in systemd with watchdog enabled.
 # If that is not the case, this thread will just print a message to stderr and return.)
-def monitor_thread(delay_seconds:float) -> None:
+def monitor_thread(server:'WebServer', delay_seconds:float) -> None:
     notify = sd_notify.Notifier()
     if not notify.enabled():
-        log('It looks like this server is not running as a service in systemd with watchdog enabled, so the monitor thread is just going to exit now.')
-        return
+        log('This server is not running as a service in systemd with watchdog enabled, so calling monitor does not make sense. Shutting down.')
+        sys.exit(0)
     log('Starting monitoring thread')
     notify.ready()
-    global keep_going
     time.sleep(delay_seconds) # Give the server some time to initialize
-    while keep_going:
-        response = ping(30)
-        if not keep_going: # Status may have changed while waiting for ping response
+    while server.keep_going:
+        response = server.ping(30)
+        if not server.keep_going: # Status may have changed while waiting for ping response
             break
         if response == 'pong':
             notify.notify() # healthy
         else:
-            log(f'Failed health check: {response}')
-            graceful_shutdown()
+            log(f'Failed health check: {response}. Stopping the server.')
+            server.stop()
             notify.notify_error(response) # not healthy. The service manager will probably kill and restart this process
+            break
         time.sleep(delay_seconds)
     log('Ending monitoring')
+
+
+# Wraps Pythons Simple HTTP Server
+class WebServer():
+    def __init__(self,
+            host: str = '127.0.0.1',
+            port: int = 8080, 
+            ssl_privkey: str = '',
+            ssl_cert: str = '',
+        ) -> None:
+        self.host = host
+        self.port = port
+        print(f'port={port}')
+        self.httpd = InnerServer(('', port), Response)
+
+        # Make a cookie jar for ping
+        self.ping_cookie_jar:Optional[requests.cookies.RequestsCookieJar] = None
+
+        # Enable SSL
+        if len(ssl_privkey) > 0 and len(ssl_cert) > 0:
+            self.httpd.socket = ssl.wrap_socket(self.httpd.socket, keyfile=ssl_privkey, certfile=ssl_cert, server_side=True)
+            self.protocol = 'https://'
+            log('Using SSL')
+        else:
+            self.protocol = 'http://'
+            log('Not using SSL')
+
+    # If successful, returns 'pong'.
+    # If not, returns some other string describing the problem.
+    # timeout is in seconds.
+    def ping(self, timeout:int) -> str:
+        try:
+            r = requests.get(f'{self.protocol}{self.host}:{self.port}/ping.html', cookies=self.ping_cookie_jar, timeout=timeout)
+            if 'Set-Cookie' in r.headers:
+                self.ping_cookie_jar = r.cookies
+            return r.text
+        except:
+            return traceback.format_exc()
+
+    # Serve web pages until stop is called
+    def serve(self, url_to_page: Callable[[Response,str,Mapping[str,Any],str,str],None]) -> None:
+        global page_maker
+        page_maker = url_to_page
+        global temp_folder
+        with tempfile.TemporaryDirectory() as td:
+            temp_folder = td
+            self.keep_going = True
+            try:
+                log(f'Serving on {self.host}:{self.port}')
+                while self.keep_going:
+                    self.httpd.handle_request() # blocks until a request comes in
+            except KeyboardInterrupt:
+                pass
+        self.httpd.server_close()
+        temp_folder = ''
+        log(f'Server stopped')
+
+    # Stops the server
+    def stop(self) -> None:
+        if self.keep_going:
+            log(f'Starting to shut down')
+            self.keep_going = False
+            self.ping(1) # This unblocks "httpd.handle_request", so it will notice we want to shut down
+
+    # Starts a thread that periodically pings the server to make sure it is still healthy
+    def monitor(self, ping_gap:float) -> None:
+        mt = threading.Thread(target=monitor_thread, args=(self, ping_gap))
+        mt.start()
 
 

@@ -1,11 +1,11 @@
 from typing import Mapping, Any, Dict, List, Optional, Deque, Set, Tuple
 import os
-from http_daemon import delay_open_url, serve_pages, monitor_thread, Session
 import json
 from collections import deque
 from datetime import datetime, timedelta
 import threading
 import sys
+from session import Session
 
 class Player():
     def __init__(self, id:str) -> None:
@@ -111,7 +111,7 @@ map: Mapping[str, Any] = {}
 
 def load_map() -> None:
     global map
-    with open('map.json', 'rb') as f:
+    with open('front_end/map.json', 'rb') as f:
         s = f.read()
     map = json.loads(s)
 

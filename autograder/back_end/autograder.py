@@ -4,7 +4,7 @@ import shutil
 import zipfile
 import os
 from datetime import datetime, timedelta
-from http_daemon import Session, log, maybe_save_state
+from http_daemon import log
 import traceback
 import threading
 import random
@@ -13,17 +13,22 @@ import sys
 import subprocess
 from subprocess import STDOUT, SubprocessError, CalledProcessError
 import diff
-
-os.chdir(os.path.join(os.path.dirname(__file__), '../front_end'))
+from session import Session, maybe_save_state
 
 change_me_hash = "ff854dee05ef262a4219cddcdfaff1f149203fd17d6f4db8454bf5f3d75470c3a4d0ee421257a27a5cb76358167fe6d4562d2e25c10ae7ad9c14492178df5551"
 
-def load_accounts(filename:str) -> Dict[str,Any]:
+def get_accounts_filename(course_desc:Mapping[str,Any]) -> str:
+    return os.path.join(course_desc['course_short'], 'scores.json')
+
+def load_accounts(course_desc:Mapping[str,Any]) -> Dict[str,Any]:
+    filename = get_accounts_filename(course_desc)
+    print(f'Loading {filename} from {os.getcwd()}')
     with open(filename, 'r') as f:
         accounts = f.read()
     return cast(Dict[str,Any], json.loads(accounts))
 
-def save_accounts(filename:str, accounts:Dict[str,Any]) -> None:
+def save_accounts(course_desc:Mapping[str,Any], accounts:Dict[str,Any]) -> None:
+    filename = get_accounts_filename(course_desc)
     with open(filename, 'w') as f:
         f.write(json.dumps(accounts, indent=2))
 
@@ -138,15 +143,12 @@ def unpack_and_check_submission(params:Mapping[str, Any], course:str, project:st
     ]
     forbidden_extensions = [
         '', # usually compiled C++ apps
-        '.arff',
         '.bat', # windows batch files
         '.class', # compiled java
-        '.csv',
         '.dat',
         '.exe', 
         '.htm',
         '.html',
-        '.json',
         '.ncb',
         '.pcb',
         '.pickle',
@@ -157,7 +159,6 @@ def unpack_and_check_submission(params:Mapping[str, Any], course:str, project:st
         '.ps1', # powershell scripts
         '.suo', 
         '.tmp',
-        '.txt',
     ]
     file_count = 0
     start_folder = ''
@@ -341,7 +342,7 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
     # Change password
     if 'first' in params and 'second' in params and params['first'] == params['second']:
         account['pw'] = params['first']
-        save_accounts(str(course_desc['accounts']), accounts)
+        save_accounts(course_desc, accounts)
 
     # See if the password needs to be changed
     if account['pw'] == change_me_hash:
@@ -364,10 +365,14 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
 
 def make_project_completion_rates(accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> str:
     p:List[str] = []
-    p.append('<ul>')
+    p.append('<table cellpadding="10px">')
+    p.append(f'<tr><td><b><u>Proj name</u></b></td><td><b><u>Due date</u></b></td><td><b><u># complete</u></b></td><td><b><u>% complete</u></b></td></tr>')
+    prev_completed_count = 1000000
     for proj_id in course_desc['projects']:
         proj = course_desc['projects'][proj_id]
         proj_title = proj['title']
+        due_time = proj['due_time']
+        due_str = f'{due_time.year}-{due_time.month}-{due_time.day}'
         proj_title_clean = proj_title.replace(' ', '_')
         total_count = 0
         completed_count = 0
@@ -378,8 +383,10 @@ def make_project_completion_rates(accounts:Dict[str,Any], course_desc:Mapping[st
             total_count += 1
             if proj_title_clean in acc:
                 completed_count += 1
-        p.append(f'<li>{proj_title}: {(100 * completed_count / total_count):.1f}% completed</li>')
-    p.append('</ul>')
+        submit_link = f'<a href="{course_desc["course_short"]}_{proj_id}_submit.html">{proj_title}</a>' if 'evaluator' in proj else proj_title
+        p.append(f'<tr><td>{submit_link}</td><td>{due_str}</td><td>{completed_count}</td><td>{(100 * completed_count / total_count):.1f}%</td></tr>')
+        prev_completed_count = completed_count
+    p.append('</table>')
     return "".join(p)
 
 def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:str) -> str:
@@ -524,7 +531,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     ###############
     #   Actions   #
     ###############
-
+    print(f'params={params}')
 
     # View scores action
     if 'scores' in params:
@@ -562,7 +569,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
                 p.append('Skipping {name} because an account for that name already exists<br><br>')
             names_to_add.append(name)
         add_students(names_to_add, accounts)
-        save_accounts(str(course_desc['accounts']), accounts)
+        save_accounts(course_desc, accounts)
         print(f'{len(names_to_add)} new student accounts created.<br><br>')
 
     # Reset password action
@@ -573,7 +580,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
             }
         student_account = accounts[params['resetme']]
         student_account['pw'] = change_me_hash
-        save_accounts(str(course_desc['accounts']), accounts)
+        save_accounts(course_desc, accounts)
         print(f'Reset password for: {params["resetme"]}')
 
     # Grant late tokens action
@@ -584,7 +591,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
             }
         student_account = accounts[params['student']]
         student_account['toks'] += int(params['addtoks'])
-        save_accounts(str(course_desc['accounts']), accounts)
+        save_accounts(course_desc, accounts)
         print(f'Updated token balance for {params["student"]} to {student_account["toks"]}')
 
     # Set project score action
@@ -595,12 +602,12 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
             }
         student_account = accounts[params['student']]
         student_account[params['project']] = int(params['score'])
-        save_accounts(str(course_desc['accounts']), accounts)
+        save_accounts(course_desc, accounts)
         print(f'Updated score for {params["student"]} {params["project"]} to {params["score"]}')
 
     # Set many scores action
-    if 'project' in params and 'scores' in params:
-        rows = params['scores'].split('\n')
+    if 'project' in params and 'set_scores' in params:
+        rows = params['set_scores'].split('\n')
         for row in rows:
             cells = row.split(',')
             if len(cells) < 1:
@@ -615,18 +622,18 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
                     'content': f"Error, no student named {student_name}"
                 }
             try:
-                int(cells[2])
+                float(cells[2])
             except:
                 return {
-                    'content': f"Error on the line {cells}, expected the third column to be an integer"
+                    'content': f"Error on the line {cells}, expected the third column to be a number"
                 }
         for row in rows:
             cells = row.split(',')
             if len(cells) < 1:
                 continue
             student_name = cells[0] + ',' + cells[1]
-            accounts[student_name][params['project']] = int(cells[2])
-        save_accounts(str(course_desc['accounts']), accounts)
+            accounts[student_name][params['project']] = float(cells[2])
+        save_accounts(course_desc, accounts)
 
     # Canonicalize names action
     if 'student_names' in params:
@@ -796,7 +803,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('<tr><td>')
     p.append('CSV data:<br>(last-name, first-name, score)<br>(one score per row)')
     p.append('</td><td>')
-    p.append('<textarea name="scores"></textarea>')
+    p.append('<textarea name="set_scores"></textarea>')
     p.append('</td></tr>')
     p.append('<tr><td></td><td><input type="submit" value="Set many scores">')
     p.append('</td></tr></table>')

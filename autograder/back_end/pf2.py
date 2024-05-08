@@ -1,11 +1,14 @@
 from typing import Mapping, Any, List, Dict, cast
 from datetime import datetime
-from http_daemon import Session, log
+from http_daemon import log
 from datetime import datetime
 from threading import Lock
 import autograder
 import sys
 import re
+import os
+import json
+from session import Session
 
 # Returns the first number in the string.
 # Throws if there is not one.
@@ -728,7 +731,7 @@ anaa
             args, input, output,
         )
 
-    if inst_val - dele_val != baseline_inst_val - baseline_dele_val:
+    if inst_val - dele_val != baseline_inst_val - baseline_dele_val and inst_val - dele_val > 2:
         raise autograder.RejectSubmission(
             'The gap between instantiations and deletions changed when more code was run. This suggests you probably have memory leaks that are not just due to global variables.',
             args, input, output,
@@ -822,7 +825,6 @@ antelope
 course_desc:Mapping[str,Any] = {
     'course_long': 'Programming Foundations II',
     'course_short': 'pf2',
-    'accounts': 'pf2_accounts.json',
     'projects': {
         'proj1': {
             'title': 'Project 1',
@@ -922,9 +924,9 @@ course_desc:Mapping[str,Any] = {
 }
 
 try:
-    accounts:Dict[str,Any] = autograder.load_accounts(course_desc['accounts'])
+    accounts:Dict[str,Any] = autograder.load_accounts(course_desc)
 except:
-    print('*** FAILED TO LOAD PF2 ACCOUNTS! Starting an empty file!!!')
+    print(f'*** FAILED TO LOAD {course_desc["course_short"]} ACCOUNTS! Starting an empty file!!!')
     accounts = {}
 
 
@@ -943,16 +945,16 @@ def accept_submission(submission:Mapping[str,Any]) -> Mapping[str,Any]:
             log(f'Passed: title={title_clean}, days_late={days_late}, score={score}')
             account[title_clean] = score
             account["toks"] -= covered_days
-            autograder.save_accounts(course_desc['accounts'], accounts)
+            autograder.save_accounts(course_desc, accounts)
 
         # Make an acceptance page
         return autograder.accept_submission(submission, days_late, covered_days, score)
 
 def view_scores_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    return autograder.view_scores_page(params, session, 'pf2_view_scores.html', accounts, course_desc)
+    return autograder.view_scores_page(params, session, f'{course_desc["course_short"]}_view_scores.html', accounts, course_desc)
 
 def admin_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
-    return autograder.make_admin_page(params, session, 'pf2_admin.html', accounts, course_desc)
+    return autograder.make_admin_page(params, session, f'{course_desc["course_short"]}_admin.html', accounts, course_desc)
 
 # To initialize the accounts at the start of a semester
 # (1) Delete the accounts file (or else this will just add to it)
@@ -969,10 +971,10 @@ def admin_page(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]
 # one student name below. It will add that student to the accounts.
 def initialize_accounts() -> None:
     try:
-        accounts:Dict[str,Any] = autograder.load_accounts(course_desc['accounts'])
+        accounts:Dict[str,Any] = autograder.load_accounts(course_desc)
     except:
         accounts = {}
-    autograder.save_accounts(course_desc['accounts'], accounts)
+    autograder.save_accounts(course_desc, accounts)
 
 if __name__ == "__main__":
     initialize_accounts()
