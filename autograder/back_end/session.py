@@ -8,7 +8,7 @@ import os
 from http_daemon import log
 
 COOKIE_LEN = 12
-last_save_state_time = datetime.now()
+last_save_sessions_time = datetime.now()
 
 class Session():
     def __init__(self) -> None:
@@ -71,14 +71,14 @@ def marshal_state() -> Mapping[str, Any]:
         'sessions': { session_id: sessions[session_id].marshal() for session_id in sessions if now_time - sessions[session_id].last_active_time < timedelta(days=42) },
     }
 
-def save_state() -> None:
+def save_sessions() -> None:
     with open('state.json', 'w') as f:
         f.write(json.dumps(marshal_state(), indent=1))
     log('state saved')
 
 def load_state() -> None:
     global sessions
-    global last_save_state_time
+    global last_save_sessions_time
     if os.path.exists('state.json'):
         with open('state.json', 'r') as f:
             server_state = json.loads(f.read())
@@ -89,11 +89,11 @@ def load_state() -> None:
         }
         log(f'no state.json file. Starting over from scratch')
     unmarshal_state(server_state)
-    last_save_state_time = datetime.now()
+    last_save_sessions_time = datetime.now()
 
-def maybe_save_state() -> None:
-    global last_save_state_time
+def maybe_save_sessions() -> None:
+    global last_save_sessions_time
     now_time = datetime.now()
-    if now_time - last_save_state_time > timedelta(minutes=15):
-        last_save_state_time = now_time
-        save_state()
+    if now_time - last_save_sessions_time > timedelta(minutes=15):
+        last_save_sessions_time = now_time
+        save_sessions()

@@ -345,7 +345,7 @@ def evaluate_flood_fill(submission:Mapping[str,Any]) -> Mapping[str, Any]:
 ###### ######
 #   #   #   #
 #       #   #
-#   #   #
+#   #   #  ##
 ## ##########
 
 5
@@ -906,28 +906,28 @@ course_desc:Mapping[str,Any] = {
     'course_short': 'pf2',
     'projects': {
         'hello': {
-            'title': 'Project 1',
+            'title': 'Project 1 - Hello World',
             'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_hello,
         },
         'debugging': {
-            'title': 'Project 2',
+            'title': 'Project 2 - Debugging',
             'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_debugging,
         },
         'stacks': {
-            'title': 'Project 3',
+            'title': 'Project 3 - Dynamic Array',
             'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_stacks,
         },
         'flood_fill': {
-            'title': 'Project 4',
+            'title': 'Project 4 - Flood Fill',
             'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
@@ -940,21 +940,21 @@ course_desc:Mapping[str,Any] = {
             'points': 86,
         },
         'boggle': {
-            'title': 'Project 5',
+            'title': 'Project  - Boggle',
             'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_boggle,
         },
         'linked_lists': {
-            'title': 'Project 6',
+            'title': 'Project 6 - Linked Lists',
             'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_linked_lists,
         },
         'merge_sort': {
-            'title': 'Project 7',
+            'title': 'Project 7 - Merge Sort',
             'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
@@ -967,28 +967,28 @@ course_desc:Mapping[str,Any] = {
             'points': 67,
         },
         'binary_search': {
-            'title': 'Project 8',
+            'title': 'Project 8 - Database',
             'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_binary_search,
         },
         'memory': {
-            'title': 'Project 9',
+            'title': 'Project 9 - Memory Management',
             'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_memory,
         },
         'heaps': {
-            'title': 'Project 10',
+            'title': 'Project 10 - Priority Queue',
             'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_heaps,
         },
         'hash_tables': {
-            'title': 'Project 11',
+            'title': 'Project 11 - Hash Table',
             'due_time': datetime(year=2024, month=5, day=2, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,

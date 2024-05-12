@@ -6,15 +6,15 @@ import pf2
 import dsa
 import autograder
 import json
-from typing import Dict, Mapping, Any, Callable
+from typing import Dict, Mapping, Any, Callable, List
 import time
 import sys
 import signal
 import traceback
 import atexit
 
-from session import Session, get_or_make_session, load_state, save_state
-from http_daemon import log, WebServer, Response
+from session import Session, get_or_make_session, load_state, save_sessions
+from http_daemon import log, WebServer, Response, delay_open_url
 
 web_server:WebServer
 
@@ -27,10 +27,35 @@ def signal_handler(sig:int, frame) -> None: # type: ignore
     time.sleep(0.5) # Give the server thread a moment to shut down
     sys.exit(0)
 
-ajax_handlers:Dict[str,Callable[[Mapping[str,Any],Session],Mapping[str,Any]]] = {
-    'ajax.html': banana_quest.make_ajax_page,
-    'game.html': banana_quest.make_game_page,
-    'redirect.html': banana_quest.make_redirect_page,
+def make_index_page(params:Mapping[str, Any], session:Session) -> Mapping[str,Any]:
+    p:List[str] = []
+    p.append('<!DOCTYPE html><html><head>')
+    p.append('<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">')
+    p.append('<script src="sha512.js"></script>')
+    p.append('</head>')
+    p.append('<body><table width="800px" align="center" style="background: #f0f0f0;"><tr><td>')
+    p.append('<h1>The server is running!</h1>')
+    p.append("Here is a list of dynamic pages this server provides:")
+    p.append("<ul>")
+    for url in page_makers:
+        p.append(f'<li><a href="{url}">{url if len(url) > 0 else "[empty]"}</a></li>')
+    p.append('<li><a href="ping.html">ping.html</a></li>')
+    p.append("</ul>")
+    p.append('<br><br><br><br></td></tr></table>')
+    p.append('<br><br><br><br>')
+    p.append('</body>')
+    p.append('</html>')
+
+    return {
+        'content': ''.join(p),
+    }
+
+page_makers:Dict[str,Callable[[Mapping[str,Any],Session],Mapping[str,Any]]] = {
+    '': make_index_page,
+    'index.html': make_index_page,
+    # 'ajax.html': banana_quest.make_ajax_page,
+    # 'game.html': banana_quest.make_game_page,
+    # 'redirect.html': banana_quest.make_redirect_page,
     'log_out.html': autograder.make_log_out_page,
     'get_results.html': autograder.get_results,
     'pf2_view_scores.html': pf2.view_scores_page,
@@ -41,9 +66,9 @@ ajax_handlers:Dict[str,Callable[[Mapping[str,Any],Session],Mapping[str,Any]]] = 
 
 def make_page(response:Response, url:str, params: Mapping[str, Any], session_id:str, ip_addr:str) -> None:
     # Try an ajax handler
-    if url in ajax_handlers:
+    if url in page_makers:
         sess = get_or_make_session(session_id, ip_addr)
-        result = ajax_handlers[url](params, sess)
+        result = page_makers[url](params, sess)
         response.send_response(200)
         if 'content' in result and len(result) == 1:
             response.send_header('Content-type', 'text/html')
@@ -111,14 +136,18 @@ def main() -> None:
         print("Not monitoring (because 'monitor' was not specified in config.json)")
 
     # Generate submission and receive pages
-    autograder.generate_submit_and_receive_pages(ajax_handlers, pf2.course_desc, pf2.accounts)
-    autograder.generate_submit_and_receive_pages(ajax_handlers, dsa.course_desc, dsa.accounts)
+    autograder.generate_submit_and_receive_pages(page_makers, pf2.course_desc, pf2.accounts)
+    autograder.generate_submit_and_receive_pages(page_makers, dsa.course_desc, dsa.accounts)
+
+    # Open a web browser if requested
+    if len(sys.argv) > 1 and sys.argv[1] == 'open_browser':
+        delay_open_url(f'{host}:{port}', 0.2)
 
     # Serve pages
     web_server.serve(make_page)
 
-    # Save state
-    save_state()
+    # Save sessions
+    save_sessions()
 
 if __name__ == "__main__":
     main()

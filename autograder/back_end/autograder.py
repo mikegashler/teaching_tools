@@ -13,7 +13,7 @@ import sys
 import subprocess
 from subprocess import STDOUT, SubprocessError, CalledProcessError
 import diff
-from session import Session, maybe_save_state
+from session import Session, maybe_save_sessions
 
 change_me_hash = "ff854dee05ef262a4219cddcdfaff1f149203fd17d6f4db8454bf5f3d75470c3a4d0ee421257a27a5cb76358167fe6d4562d2e25c10ae7ad9c14492178df5551"
 
@@ -28,6 +28,7 @@ def load_accounts(course_desc:Mapping[str,Any]) -> Dict[str,Any]:
     return cast(Dict[str,Any], json.loads(accounts))
 
 def save_accounts(course_desc:Mapping[str,Any], accounts:Dict[str,Any]) -> None:
+    os.makedirs(course_desc['course_short'], exist_ok=True)
     filename = get_accounts_filename(course_desc)
     with open(filename, 'w') as f:
         f.write(json.dumps(accounts, indent=2))
@@ -242,23 +243,49 @@ def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     if len(message) > 0:
         p.append(message)
         p.append('<br><br>')
-    p.append(f'<form action="{dest_page}"')
-    p.append(' method="post" onsubmit="hash_password(\'password\');">')
-    p.append('<table><tr><td>')
-    p.append('Name:')
-    p.append('</td><td>')
-    p.append('<select name="name">')
-    p.append(f'<option name="-- Choose your name --" value="bogus">')
-    for name in sorted(accounts):
-        p.append(f'<option name="{name}" value="{name}"{" selected" if name == selected_name else ""}>{name}</option>')
-    p.append('</select>')
-    p.append('</td></tr>')
-    p.append('<tr><td>Password:</td><td>')
-    p.append('<input type="password" name="password" id="password">')
-    p.append('</td></tr>')
-    p.append('<tr><td></td><td><input type="submit" value="Log in">')
-    p.append('</td></tr></table>')
-    p.append('</form>')
+
+    if len(accounts) == 0:
+        # Make instructor account
+        p.append('<h1>Initial setup</h1>')
+        p.append('Welcome, professor. Please enter your name and the password you would like to use for your administrative account:<br>')
+        p.append(f'<form action="{dest_page}"')
+        p.append(' method="post" onsubmit="hash_password(\'password\');">')
+        p.append('<table><tr><td>')
+        p.append('First name:')
+        p.append('</td><td>')
+        p.append('<input type="input" name="prof_first">')
+        p.append('</td></tr>')
+        p.append('<tr><td>')
+        p.append('Last name:')
+        p.append('</td><td>')
+        p.append('<input type="input" name="prof_last">')
+        p.append('</td></tr>')
+        p.append('<tr><td>Password:</td><td>')
+        p.append('<input type="password" name="password" id="password">')
+        p.append('</td></tr>')
+        p.append('<tr><td></td><td><input type="submit" value="Create new account">')
+        p.append('</td></tr></table>')
+        p.append('</form>')
+    else:
+        # Show login form
+        p.append(f'<form action="{dest_page}"')
+        p.append(' method="post" onsubmit="hash_password(\'password\');">')
+        p.append('<table><tr><td>')
+        p.append('Name:')
+        p.append('</td><td>')
+        p.append('<select name="name">')
+        p.append(f'<option value="bogus">-- Choose your name --</option>')
+        for name in sorted(accounts):
+            p.append(f'<option value="{name}"{" selected" if name == selected_name else ""}>{name}</option>')
+        p.append('</select>')
+        p.append('</td></tr>')
+        p.append('<tr><td>Password:</td><td>')
+        p.append('<input type="password" name="password" id="password">')
+        p.append('</td></tr>')
+        p.append('<tr><td></td><td><input type="submit" value="Log in">')
+        p.append('</td></tr></table>')
+        p.append('</form>')
+
     page_end(p)
     return {
         'content': ''.join(p),
@@ -267,8 +294,8 @@ def make_login_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
 # Returns an empy dictionary if the user is already logged in.
 # Returns a login page (with the destination set as specified) if the user is not logged in.
 def require_login(params:Mapping[str, Any], session:Session, dest_page:str, accounts:Dict[str,Any], course_desc:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Log in if credentials were provided
     if 'name' in params and 'password' in params:
+        # Log in
         try:
             account = accounts[params['name']]
         except:
@@ -276,7 +303,19 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
         if account['pw'] != params['password']:
             return make_login_page(params, session, dest_page, accounts, f'Incorrect password. (Please contact the instructor if you need to have your password reset.)')
         session.name = params['name']
-        maybe_save_state()
+        maybe_save_sessions()
+    elif 'prof_first' in params and 'prof_last' in params and 'password' in params and len(accounts) == 0:
+        # Make the professor account
+        prof_name = f'{params["prof_last"]}, {params["prof_first"]}'
+        pw_hash = params['password']
+        accounts[prof_name] = {
+            'pw': pw_hash,
+            'ta': 'true',
+            'toks': 0,
+        }
+        session.name = prof_name
+        maybe_save_sessions()
+        save_accounts(course_desc, accounts)
 
     # Make sure we are logged in
     if not session.logged_in():
@@ -286,7 +325,8 @@ def require_login(params:Mapping[str, Any], session:Session, dest_page:str, acco
     except:
         return make_login_page(params, session, dest_page, accounts, f'Unrecognized account name: {session.name}')
     
-    #### At this point we are logged in, so now let's check some operations that require being logged in...
+    #### At this point we are definitely logged in,
+    #### so now let's check some operations that require being logged in...
 
     # Change password
     if 'first' in params and 'second' in params and params['first'] == params['second']:
@@ -316,7 +356,6 @@ def make_project_completion_rates(accounts:Dict[str,Any], course_desc:Mapping[st
     p:List[str] = []
     p.append('<table cellpadding="10px">')
     p.append(f'<tr><td><b><u>Proj name</u></b></td><td><b><u>Due date</u></b></td><td><b><u># complete</u></b></td><td><b><u>% complete</u></b></td></tr>')
-    prev_completed_count = 1000000
     for proj_id in course_desc['projects']:
         proj = course_desc['projects'][proj_id]
         proj_title = proj['title']
@@ -332,8 +371,10 @@ def make_project_completion_rates(accounts:Dict[str,Any], course_desc:Mapping[st
             if proj_id in acc:
                 completed_count += 1
         submit_link = f'<a href="{course_desc["course_short"]}_{proj_id}_submit.html">{proj_title}</a>' if 'evaluator' in proj else proj_title
-        p.append(f'<tr><td>{submit_link}</td><td>{due_str}</td><td>{completed_count}</td><td>{(100 * completed_count / total_count):.1f}%</td></tr>')
-        prev_completed_count = completed_count
+        completed_perc = '0'
+        if total_count > 0:
+            completed_perc = f'{(100 * completed_count / total_count):.1f}'
+        p.append(f'<tr><td>{submit_link}</td><td>{due_str}</td><td>{completed_count}</td><td>{completed_perc}%</td></tr>')
     p.append('</table>')
     return "".join(p)
 
@@ -516,7 +557,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
             name = row.strip()
             if len(name) == 0:
                 continue
-            if params[name] in accounts:
+            if name in accounts:
                 p.append('Skipping {name} because an account for that name already exists<br><br>')
             names_to_add.append(name)
         add_students(names_to_add, accounts)
@@ -555,6 +596,11 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         student_account[params['project']] = int(params['score'])
         save_accounts(course_desc, accounts)
         print(f'Updated score for {params["student"]} {params["project"]} to {params["score"]}')
+
+    # Impersonate action
+    if 'impersonate' in params:
+        session.name = params['impersonate']
+        p.append(f'You are now impersonating {session.name}<br><br>')
 
     # Set many scores action
     if 'project' in params and 'set_scores' in params:
@@ -636,10 +682,10 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Student whose password to reset:')
     p.append('</td><td>')
     p.append('<select name="resetme">')
-    p.append(f'<option name="" value="">---</option>')
+    p.append(f'<option value="">---</option>')
     for name in sorted(accounts):
         if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
-            p.append(f'<option name="{name}" value="{name}">{name}</option>')
+            p.append(f'<option value="{name}">{name}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td></td><td><input type="submit" value="Reset password!">')
@@ -670,9 +716,9 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Student to grant tokens to:')
     p.append('</td><td>')
     p.append('<select name="student">')
-    p.append(f'<option name="" value="">---</option>')
+    p.append(f'<option value="">---</option>')
     for name in sorted(accounts):
-        p.append(f'<option name="{name}" value="{name}">{name} (has {accounts[name]["toks"]})</option>')
+        p.append(f'<option value="{name}">{name} (has {accounts[name]["toks"]})</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
@@ -693,9 +739,9 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Student to set score for:')
     p.append('</td><td>')
     p.append('<select name="student">')
-    p.append(f'<option name="" value="">---</option>')
+    p.append(f'<option value="">---</option>')
     for name in sorted(accounts):
-        p.append(f'<option name="{name}" value="{name}">{name}</option>')
+        p.append(f'<option value="{name}">{name}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
@@ -714,6 +760,24 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('<input type="text" name="score">')
     p.append('</td></tr>')
     p.append('<tr><td></td><td><input type="submit" value="Set score">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
+    # Impersonate form
+    p.append('<h2>Impersonate</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Student to impersonate:')
+    p.append('</td><td>')
+    p.append('<select name="impersonate">')
+    p.append(f'<option value="">---</option>')
+    for name in sorted(accounts):
+        p.append(f'<option value="{name}">{name}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Impersonate">')
     p.append('</td></tr></table>')
     p.append('</form>')
 
@@ -990,7 +1054,7 @@ def make_working_page(id:str, session: Session) -> Mapping[str,Any]:
         'content': ''.join(p),
     }
 
-# This is called by AJAX POST from the make_working_page.
+# This is called by AJAX POST from make_working_page.
 # It returns a JSON object that indicates progress or results
 def get_results(params: Mapping[str, Any], session: Session) -> Mapping[str, Any]:
     global jobs
