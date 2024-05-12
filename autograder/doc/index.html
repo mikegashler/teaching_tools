@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<style>
+body,center {  font-family: verdana, tahoma, geneva, sans-serif;  font-size: 24px;  background-color:#cacaca;}
+.code {  color:#a0ffa0;  background-color:#000000;  width:750px;  overflow-x:scroll;}
+		</style>
+	</head>
+	<body>
+		<table width="800px" cellpadding="10px" align="center" style="background: #ffffff;">
+			<tbody>
+				<tr><td>
+
+
+
+<img src="banner.png"><br>
+
+<h1>Autograder documentation</h1>
+
+<br>
+<h2>What is this?</h2>
+
+<p>
+	So I wrote an autograder in Python.
+	I used it in Spring 2024 to teach EECS Programming Foundations 2,
+	and DASC Data Structures and Algorithms.
+	I think it carries more than its own weight.
+	However, there are both pros and cons to using an autograder:
+</p>
+
+<h3>Some pros:</h3>
+<ul>
+	<li>Students get instant feedback.</li>
+	<li>It reduces work for the TAs,
+		freeing them up to help students more.
+	</li>
+</ul>
+
+<h3>Some cons:</h3>
+<ul>
+	<li>Implementing meaningful evaluations can be a challenge.</li>
+	<li>Students feel less watched.
+		This may make them feel more comfortable cheating.</li>
+	<li>Any bugs will affect the whole class all at once,
+		leading to potential mass emergencies.</li>
+	<li>The VPN is cumbersome to work with.</li>
+	<li>Needy students will blame their lateness on a surprise
+		inability to work with the VPN at critical moments.</li>
+</ul>
+
+<br>
+<h2>Getting started</h2>
+
+<br>
+<b>Step 1: Get a VM</b>
+
+<p>
+	Jason Crawley set up a VM for me at jacquard.ddns.uark.edu at U of A.
+	My only complaint is that I have to be connected to the VPN to connect to it.
+	But apparently, there's nothing they can do about that.
+	So maybe ask him to set up a VM for you.
+</p>
+
+<br>
+<b>Step 2: Make a place on the VM for the autograder</b>
+
+like this:
+
+<pre class="code">
+globalprotect launch-ui       # connect to the VM
+ssh [username]@[hostname]     # ssh into the VM
+cd /var/www                   # go to where you want it
+sudo mkdir autograder         # make a folder for it
+cd                            # return to your home folder
+ln -s /var/www/autograder     # make a symlink (for convenience)
+sudo adduser sandbox          # make an account for running jobs
+exit                          # return to your computer
+</pre>
+
+<br>
+<b>Step 3: Copy the autograder to the VPN</b>
+
+<pre class="code">
+cd teaching_tools/autograder
+scp -r * [username]@[hostname]:/var/www/autograder/
+</pre>
+
+Also, make a file named config.json with the following contents,
+
+<pre class="code">
+{
+    "port": 80,
+    "monitor": 30
+}
+</pre>
+
+<p>and put it in the autograder folder.
+(On my laptop, I run it on a different port and don't include the "monitor" field.
+That way, I can see it working on my machine before I push my changes to the VM.)</p>
+
+<p>You will also need to install a few packages, like mypy, requests, sd-notify, and whatever else it complains about when you first try to run it:<br>
+<pre class="code">
+python3 -m pip install mypy==1.8.0
+python3 -m pip install requests
+python3 -m pip install sd-notify
+</pre>
+</p>
+
+<p>Now, try running it:<br>
+<pre class="code">
+sudo ./run.bash
+</pre></p>
+
+<p>Press Ctrl-C to stop. (We'll start customizing it later.)</p>
+
+
+<br>
+<b>Step 4: Run it as a systemd service</b>
+
+<p>A systemd service will continue running after you log out.
+It will restart your server one each day.
+It will also check that the server is healthy at regular intervals,
+and automatically restart it if it does not respond in a timely manner.
+This ensures the system will remain accessible even when naive students
+submit surprisingly stupid things (like endless loops that leak memory
+and spew huge volumes of data to a file, etc.)</p>
+
+<p>So make a textfile named autograder.service with the following contents:</p>
+
+<pre class="code">
+[Unit]
+Description=A daemon for receiving and partly checking homework submissions
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+WatchdogSec=600
+Restart=always
+RuntimeMaxSec=86400
+RestartSec=1
+User=root
+ExecStart=/usr/bin/python3 /var/www/autograder/back_end/main.py
+StandardOutput=append:/var/www/autograder/stdout.txt
+StandardError=append:/var/www/autograder/stderr.txt
+
+[Install]
+WantedBy=multi-user.target
+</pre>
+
+<p>Copy this file to /etc/systemd/system on your VM.
+Then activate it with the following commands:</p>
+
+<pre class="code">
+sudo systemctl enable autograder.service
+sudo systemctl start autograder.service
+</pre>
+
+<p>Now the server is running as a service.
+To test it, visit http://[hostname]/pf2_admin.html.
+The default password for all new accounts is "change_me".
+As soon as you enter that, it will force you to change it to something else.
+</p>
+
+<p>If you want to stop the server,
+for example if you want to manually hack the scores or prevent submissions after dead day,
+use the following command:<br>
+<pre class="code">
+sudo systemctl stop autograder.service
+</pre>
+
+<p>I frequently make changes in the back_end folder
+(because that's where the code that evaluates submissions is located),
+so for convenience I made this script to copy back_end changes from my laptop over to the VM:</p>
+
+<pre class="code">
+#!/bin/bash
+set -e
+scp back_end/*.py [username]@[hostname]:/var/www/autograder/back_end/
+</pre>
+
+<p>After you update the code, you still need to ssh into the VM and restart the server:
+<pre class="code">
+sudo systemctl restart autograder.service
+</pre>
+
+
+<br>
+<h2>Tour of the code</h2>
+
+<p>In order to use the autograder effectively,
+you will need to be at least somewhat familiar with the code.
+So let's take a quick little tour:</p>
+
+<p>Here's what you will find in the autograder folder:</p>
+	<ul>
+		<li><b>run.bash</b>: A script that type-checks the back_end Python code, then launches the server.</li>
+		<li><b>config.json</b>: Specifies which port to run the server on, and how frequently to perform health checks.</li>
+		<li><b>state.json</b>: Stores session info (so you don't have to log in every time you visit).</li>
+		<li><b>stdout.txt</b>: Whatever you "print" will go to this file.</li>
+		<li><b>stderr.txt</b>: Whatever you "log" will go tho this file. This is the main server log. If something isn't working right, I open this file in vim and go to line 0 (the end) to see if any exceptions were logged.</li>
+		<li><b>pf2</b>: The folder where all PF2 submissions will go.</li>
+		<li><b>pf2/scores.json</b>: The master record of all PF2 password hashes and project scores.
+			If you fear data loss, this is the file you want to back up.
+			It contains everything you would need to restore your class and get it going again.
+		</li>
+		<li><b>dsa</b>: The folder where all Data Structures and Algorithms submissions will go.</li>
+		<li><b>dsa/scores.json</b>: The master record of all DSA password hashes and project scores.</li>
+		<li><b>front_end</b>: The folder where web content goes.</li>
+		<li><b>front_end/banner.png</b>: The university logo that appears at the top of all pages.</li>
+		<li><b>front_end/sha512.js</b>: Script for hasing passwords (so passwords are never transmitted in plain text).</li>
+		<li><b>back_end</b>: The folder where server code goes.</li>
+		<li><b>back_end/http_daemon.py</b>: This file contains the engine for the web server. It implements the HTTP protocol to communicate with web browsers.</li>
+		<li><b>back_end/autograder.py</b>: This file contains the main engine for the autograder. If you want to improve any general autograder features, you will do it in this file.</li>
+		<li><b>back_end/autograder.py</b>: This file contains the main engine for the autograder. If you want to improve any general autograder features, they probably belong in this file.</li>
+		<li><b>back_end/pf2.py</b>: This file contains the code for checking PF2 submissions. (If you update a project, you will need to update this file to check it properly.)</li>
+		<li><b>back_end/dsa.py</b>: This file contains the code for checking DSA submissions. (If you update a project, you will need to update this file to check it properly.)</li>
+		<li><b>back_end/main.py</b>: This is where the server begins. You will find a list of URL entrypoints in this file.</li>
+		<li><b>back_end/sus.py</b>: A plagiarism detection script. (It is not-yet integrated with the autograder, but I have big plans.)
+		<li><b>back_end/banana_quest.py</b>: This is left over from a game I made for Paradigms. It is what eventually evolved into this submission server. Basically, it is now outdated garbage, but I'm keeping it around in case I decide to do another MMO game in a future Paradigms class.
+	</ul>
+
+
+
+<br>
+<h2>Setting up your class</h2>
+
+<p>In pf2.py (or dsa.py) you will see a data structure named "course_desc".
+This data structure specifies the due dates, titles, and weights for all of your class projects.
+And most significantly, you also provide an "evaluator" for each project.
+The "evaluator" is a function that checks a project submission.
+If any problem is found, this function should raise an autograder.RejectSubmission error.
+If no problems are found, it should update the student's scores and call autograder.accept_submission.
+</p>
+
+
+<br>
+<h2>Submission requirements</h2>
+
+<p>Each submission is required to contain a file named "run.bash".
+This is expected to be a script that will build and execute the student's code.
+(I think this helps students get used to scripting their build processes.)
+It must also pass any arguments forward to the student's app
+(so it should be executed with $* as the argument.)
+The autograder will pass arguments to this script and pipe the output to a file,
+which it will then search for expected output values.
+</p>
+
+<p>The amount of drive space I was given was pretty small.
+Consequently, I imposed a lot of rules about which types of files are allowed to occur in submissions.
+To my surprise, students seemed to have great difficulty controlling what ended up in their zip files.
+So be prepared to explain:
+<ul>
+	<li>Neither Windows Explorer nor Mac Finder shows hidden files by default.</li>
+	<li>The BASH command "ls -al" will show hidden files and folders.</li>
+	<li>The "." and ".." folders are not a problem, and do not need to be deleted.</li>
+	<li>The .DS_Store folder is created by Finder. You cannot delete it while a Finder
+		window is showing your project folder.</li>
+	<li>The .settings folder is created by VS Code (when it is installed in some particular way).
+		VS Code will keep recreating it if you keep it open.</li>
+	<li>The zip command does not replace an existing zip file. It adds to it.
+		So if you want to delete a file, you must delete the zip file and recreated it.</li>
+</ul>
+</p>
+
+
+<br>
+<h2>Grading</h2>
+
+<p>My grading style is kind of unusual, so you may want to tweak that.
+I grant all the students 7 free "late tokens" when I create their accounts.
+(You can change this in the add_students function in autograder.py.)
+I automatically give submissions that pass my checks full credit minus
+3 points per day late, for a minimum score of 30.
+(You can change this as you desire in the accept_submission function in pf2.py or dsa.py.)
+</p>
+
+
+<br>
+<h2>Legal</h2>
+
+<p>All of this code is distributed under the WTFPL, or at your option any other license you choose.
+Please feel free to modify, derive-from, and/or distribute this code however you see fit.
+No attribute is required. I do not care what you do with this code. It is yours now.
+</p>
+				</td></tr>
+			</tbody>
+		</table>
+		<br><br><br><br>
+	</body>
+</html>
