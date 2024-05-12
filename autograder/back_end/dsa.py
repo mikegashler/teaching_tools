@@ -23,6 +23,64 @@ def next_num(s:str) -> float:
     else:
         raise ValueError('No number found')
 
+def submission_checks(submission:Mapping[str,Any]) -> None:
+    # Check for forbidden files or folders
+    forbidden_folders = [
+        '.DS_Store',
+        '.mypy_cache',
+        '__pycache__',
+        '.git',
+        '.ipynb_checkpoints',
+        '__MACOSX',
+        '.settings',
+        'backup',
+        'data',
+        'images',
+        'pics',
+    ]
+    forbidden_extensions = [
+        '', # usually compiled C++ apps
+        '.bat', # windows batch files
+        '.class', # compiled java
+        '.dat',
+        '.exe', 
+        '.htm',
+        '.html',
+        '.ncb',
+        '.pcb',
+        '.pickle',
+        '.pkl',
+        '.o', # C++ object files
+        '.obj', # C++ object files
+        '.pdb',
+        '.ps1', # powershell scripts
+        '.suo', 
+        '.tmp',
+    ]
+    file_count = 0
+    base_path = submission['base_path']
+    for path, folders, files in os.walk(base_path):
+        for forbidden_folder in forbidden_folders:
+            if forbidden_folder in folders:
+                raise autograder.RejectSubmission(f'Your zip file contains a forbidden folder: "{forbidden_folder}". (Note that the zip command adds to an existing zip file. To remove a file it is necessary to delete your zip file and make a fresh one.)', [], '', '')
+        for filename in files:
+            _, ext = os.path.splitext(filename)
+            for forbidden_extension in forbidden_extensions:
+                if ext == forbidden_extension:
+                    raise autograder.RejectSubmission(f'Your zip contains an unnecessary file: "{filename}". Please submit only your code and build script.', [], '', '')
+            if ext == '.zip' and path != base_path:
+                raise autograder.RejectSubmission(f'Your zip contains other zip files. Please submit only your code and build script.  (Note that the zip command adds to an existing zip file. To remove a file it is necessary to delete your zip file and make a fresh one.)', [], '', '')
+            if os.stat(os.path.join(path, filename)).st_size > 2000000:
+                msg =f'The file {filename} is too big. All files must be less than 2MB.'
+                log(msg)
+                raise autograder.RejectSubmission(msg, [], '', '')
+        file_count += len(files)
+
+    # Check that there are not too many files
+    max_files = 50
+    if file_count > max_files:
+        raise autograder.RejectSubmission(f'Your zip file contains {file_count} files! Only {max_files} are allowed.  (Note that the zip command adds to an existing zip file. To remove files it is necessary to delete your zip file and make a fresh one.)', [], '', '')
+
 def basic_checks(args:List[str], input:str, output:str) -> None:
     if output.find(': error: ') >= 0:
         raise autograder.RejectSubmission(
@@ -35,7 +93,9 @@ def basic_checks(args:List[str], input:str, output:str) -> None:
             args, input, output
         )
 
-def evaluate_proj1(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_hello(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
     input = '''1
@@ -53,7 +113,9 @@ def evaluate_proj1(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj2(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_summarizing(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the stats correctly
     args:List[str] = []
     input = '''1
@@ -117,7 +179,9 @@ def evaluate_proj2(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj3(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_correlations(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the stats correctly
     args:List[str] = []
     input = '''1
@@ -146,7 +210,9 @@ def evaluate_proj3(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_sorting(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it sorts a single column correctly
     args:List[str] = []
     input = '''1
@@ -217,7 +283,9 @@ def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj5(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_binary_search(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: Do a query
     args:List[str] = []
     input = '''6
@@ -294,7 +362,9 @@ fish
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_attr_ranking(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
     input = '''1
@@ -323,7 +393,9 @@ def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_pca(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
     input = '''9
@@ -391,7 +463,9 @@ def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_jupyter(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
     input = '''
@@ -448,7 +522,9 @@ def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_pandas(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
     input = '''
@@ -525,7 +601,9 @@ def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj10(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_data_mining(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it prints the contents of a csv file when loaded
     args:List[str] = []
     input = '''
@@ -586,33 +664,33 @@ course_desc:Mapping[str,Any] = {
     'course_long': 'Data Structures & Algorithms',
     'course_short': 'dsa',
     'projects': {
-        'proj1': {
+        'hello': {
             'title': 'Project 1',
             'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj1,
+            'evaluator': evaluate_hello,
         },
-        'proj2': {
+        'summarizing': {
             'title': 'Project 2',
             'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj2,
+            'evaluator': evaluate_summarizing,
         },
-        'proj3': {
+        'correlations': {
             'title': 'Project 3',
             'due_time': datetime(year=2024, month=2, day=13, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj3,
+            'evaluator': evaluate_correlations,
         },
-        'proj4': {
+        'sorting': {
             'title': 'Project 4',
             'due_time': datetime(year=2024, month=2, day=20, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj4,
+            'evaluator': evaluate_sorting,
         },
         'midterm1': {
             'title': 'Midterm 1',
@@ -620,26 +698,26 @@ course_desc:Mapping[str,Any] = {
             'weight': 20,
             'points': 90,
         },
-        'proj5': {
+        'binary_search': {
             'title': 'Project 5',
             'due_time': datetime(year=2024, month=3, day=7, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj5,
+            'evaluator': evaluate_binary_search,
         },
-        'proj6': {
+        'attr_ranking': {
             'title': 'Project 6',
             'due_time': datetime(year=2024, month=3, day=26, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj6,
+            'evaluator': evaluate_attr_ranking,
         },
-        'proj7': {
+        'pca': {
             'title': 'Project 7',
             'due_time': datetime(year=2024, month=4, day=2, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj7,
+            'evaluator': evaluate_pca,
         },
         'midterm2': {
             'title': 'Midterm 2',
@@ -647,32 +725,32 @@ course_desc:Mapping[str,Any] = {
             'weight': 20,
             'points': 75,
         },
-        'proj8': {
+        'jupyter': {
             'title': 'Project 8',
             'due_time': datetime(year=2024, month=4, day=16, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj8,
+            'evaluator': evaluate_jupyter,
         },
-        'proj9': {
+        'pandas': {
             'title': 'Project 9',
             'due_time': datetime(year=2024, month=4, day=23, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj9,
+            'evaluator': evaluate_pandas,
         },
-        'proj10': {
+        'data_mining': {
             'title': 'Project 10',
             'due_time': datetime(year=2024, month=4, day=30, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj10,
+            'evaluator': evaluate_data_mining,
         },
         'final': {
             'title': 'Final exam',
             'due_time': datetime(year=2024, month=5, day=7, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 100,
+            'points': 92,
         },
     }
 }
@@ -691,13 +769,13 @@ def accept_submission(submission:Mapping[str,Any]) -> Mapping[str,Any]:
     with accept_lock:
         account = submission['account']
         days_late = submission['days_late']
-        title_clean = submission['title_clean']
+        proj_id = submission['proj_id']
         covered_days = min(days_late, account["toks"])
         days_late -= covered_days
         score = max(30, 100 - 3 * days_late)
-        if not (title_clean in account): # to protect from multiple simultaneous accepts
-            log(f'Passed: title={title_clean}, days_late={days_late}, score={score}')
-            account[title_clean] = score
+        if not (proj_id in account): # to protect from multiple simultaneous accepts
+            log(f'Passed: title={proj_id}, days_late={days_late}, score={score}')
+            account[proj_id] = score
             account["toks"] -= covered_days
             autograder.save_accounts(course_desc, accounts)
 

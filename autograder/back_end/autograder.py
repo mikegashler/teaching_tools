@@ -101,7 +101,7 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
 # Receives a submission. Unzips it. Checks for common problems.
 # Executes it, and returns the output as a string.
 # Throws a ValueError if anything is wrong with the submission.
-def unpack_and_check_submission(params:Mapping[str, Any], course:str, project:str, student:str) -> str:
+def unpack_submission(params:Mapping[str, Any], course:str, project_id:str, student:str) -> Tuple[str, str]:
     # Make sure we received a zip file
     zipfilename = params['filename']
     _, extension = os.path.splitext(zipfilename)
@@ -116,7 +116,7 @@ def unpack_and_check_submission(params:Mapping[str, Any], course:str, project:st
     t = datetime.now()
     date_stamp = f'{t.year:04}-{t.month:02}-{t.day:02}_{t.hour:02}-{t.minute:02}-{t.second:02}-{t.microsecond:06}'
     student = student.replace(' ', '_').replace(',', '_').replace('\'', '_')
-    basename = os.path.join(course, project, student, date_stamp)
+    basename = os.path.join(course, project_id, student, date_stamp)
     log(f'making dirs: {basename}')
     os.makedirs(basename)
     zipname = os.path.join(basename, os.path.basename(zipfilename))
@@ -127,67 +127,16 @@ def unpack_and_check_submission(params:Mapping[str, Any], course:str, project:st
     with zipfile.ZipFile(zipname, 'r') as zip_ref:
         zip_ref.extractall(basename)
 
-    # Check for forbidden files or folders, and find the run.bash script
-    forbidden_folders = [
-        '.DS_Store',
-        '.mypy_cache',
-        '__pycache__',
-        '.git',
-        '.ipynb_checkpoints',
-        '__MACOSX',
-        '.settings',
-        'backup',
-        'data',
-        'images',
-        'pics',
-    ]
-    forbidden_extensions = [
-        '', # usually compiled C++ apps
-        '.bat', # windows batch files
-        '.class', # compiled java
-        '.dat',
-        '.exe', 
-        '.htm',
-        '.html',
-        '.ncb',
-        '.pcb',
-        '.pickle',
-        '.pkl',
-        '.o', # C++ object files
-        '.obj', # C++ object files
-        '.pdb',
-        '.ps1', # powershell scripts
-        '.suo', 
-        '.tmp',
-    ]
-    file_count = 0
+    # Find the "run.bash" file
     start_folder = ''
     for path, folders, files in os.walk(basename):
-        for forbidden_folder in forbidden_folders:
-            if forbidden_folder in folders:
-                raise ValueError(f'Your zip file contains a forbidden folder: "{forbidden_folder}".')
-        for filename in files:
-            _, ext = os.path.splitext(filename)
-            for forbidden_extension in forbidden_extensions:
-                if ext == forbidden_extension:
-                    raise ValueError(f'Your zip contains an unnecessary file: "{filename}". Please submit only your code and build script.')
-            if os.stat(os.path.join(path, filename)).st_size > 2000000:
-                msg =f'The file {filename} is too big. All files must be less than 2MB.'
-                log(msg)
-                raise ValueError(msg)
-        file_count += len(files)
         if 'run.bash' in files:
+            if len(start_folder) > 0:
+                raise ValueError(f'Multiple "fun.bash" files were found in your submission. There should be only one.')
             start_folder = path
-
-    # Check that there are not too many files
-    max_files = 50
-    if file_count > max_files:
-        raise ValueError(f'Your zip file contains {file_count} files! Only {max_files} are allowed.')
-
-    # Check that a 'run.bash' file was found somewhere in the archive
     if start_folder == '':
         raise ValueError(f'No "run.bash" file was found in your submission.')
-    return start_folder
+    return basename, start_folder
 
 # This is the header at the top of every page
 def page_start(p:List[str], session:Session) -> None:
@@ -373,7 +322,6 @@ def make_project_completion_rates(accounts:Dict[str,Any], course_desc:Mapping[st
         proj_title = proj['title']
         due_time = proj['due_time']
         due_str = f'{due_time.year}-{due_time.month}-{due_time.day}'
-        proj_title_clean = proj_title.replace(' ', '_')
         total_count = 0
         completed_count = 0
         for name in accounts:
@@ -381,7 +329,7 @@ def make_project_completion_rates(accounts:Dict[str,Any], course_desc:Mapping[st
             if 'ta' in acc:
                 continue
             total_count += 1
-            if proj_title_clean in acc:
+            if proj_id in acc:
                 completed_count += 1
         submit_link = f'<a href="{course_desc["course_short"]}_{proj_id}_submit.html">{proj_title}</a>' if 'evaluator' in proj else proj_title
         p.append(f'<tr><td>{submit_link}</td><td>{due_str}</td><td>{completed_count}</td><td>{(100 * completed_count / total_count):.1f}%</td></tr>')
@@ -403,7 +351,9 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
         proj_title = proj["title"]
         t.append(f'<td>{proj_title}</td>')
         p.append(f',{proj_title}')
-    t.append('<td>Grade</td></tr>\n')
+    t.append('<td>Grade</td>')
+    #t.append('<td>Letter grade</td>')
+    t.append('</tr>\n')
     p.append(',Grade')
     p.append('\n')
 
@@ -467,10 +417,9 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
             if now_time < due_time:
                 weight = 0.
             proj_points = proj["points"]
-            proj_title_clean = proj['title'].replace(' ', '_')
-            score = float(acc[proj_title_clean] if proj_title_clean in acc else 0.)
+            score = float(acc[proj_id] if proj_id in acc else 0.)
             eq += f'+{chr(col_index)}2*{chr(col_index)}{row_index}/{chr(col_index)}3'
-            if proj_title_clean in acc or now_time >= due_time:
+            if proj_id in acc or now_time >= due_time:
                 t.append(f'<td>{score}</td>')
                 p.append(f',{score}')
                 weighted_points += weight * score / proj_points
@@ -481,6 +430,8 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
         t.append(f'<td>{(weighted_points * 100. / sum_weight):.2f}</td></tr>\n')
         eq += f')*100/{chr(col_index)}2'
         p.append(f',{eq}')
+        final_score_cell = f'{chr(col_index)}{row_index}'
+        #p.append(f',=IF({final_score_cell}>=90,"A",IF({final_score_cell}>=80,"B",IF({final_score_cell}>=70,"C",IF({final_score_cell}>=60,"D","F"))))')
         p.append('\n')
         row_index += 1
     t.append('</table>\n')
@@ -608,13 +559,13 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     # Set many scores action
     if 'project' in params and 'set_scores' in params:
         rows = params['set_scores'].split('\n')
-        for row in rows:
+        for zline, row in enumerate(rows):
             cells = row.split(',')
-            if len(cells) < 1:
+            if len(cells) < 1 or (len(cells) == 1 and len(cells[0]) < 1):
                 continue
             elif len(cells) != 3:
                 return {
-                    'content': f"Error on the line {cells}, expected 3 columns"
+                    'content': f"Error on the line {zline+1} ({row}), expected 3 columns"
                 }
             student_name = cells[0] + ',' + cells[1]
             if not student_name in accounts:
@@ -625,11 +576,11 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
                 float(cells[2])
             except:
                 return {
-                    'content': f"Error on the line {cells}, expected the third column to be a number"
+                    'content': f"Error on the line {zline+1} ({row}), expected the third column to be a number"
                 }
         for row in rows:
             cells = row.split(',')
-            if len(cells) < 1:
+            if len(cells) < 1 or (len(cells) == 1 and len(cells[0]) < 1):
                 continue
             student_name = cells[0] + ',' + cells[1]
             accounts[student_name][params['project']] = float(cells[2])
@@ -751,11 +702,10 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Project to set score for:')
     p.append('</td><td>')
     p.append('<select name="project">')
-    p.append(f'<option name="" value="">---</option>')
-    for proj in course_desc['projects']:
-        title = course_desc['projects'][proj]['title']
-        title_clean = title.replace(' ', '_')
-        p.append(f'<option name="{title_clean}" value="{title_clean}">{title_clean}</option>')
+    p.append(f'<option value="">---</option>')
+    for proj_id in course_desc['projects']:
+        title = course_desc['projects'][proj_id]['title']
+        p.append(f'<option value="{proj_id}">{title}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
@@ -793,11 +743,10 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('Project to set scores for:')
     p.append('</td><td>')
     p.append('<select name="project">')
-    p.append(f'<option name="" value="">---</option>')
-    for proj in course_desc['projects']:
-        title = course_desc['projects'][proj]['title']
-        title_clean = title.replace(' ', '_')
-        p.append(f'<option name="{title_clean}" value="{title_clean}">{title_clean}</option>')
+    p.append(f'<option value="">---</option>')
+    for proj_id in course_desc['projects']:
+        title = course_desc['projects'][proj_id]['title']
+        p.append(f'<option value="{proj_id}">{title}</option>')
     p.append('</select>')
     p.append('</td></tr>')
     p.append('<tr><td>')
@@ -836,7 +785,7 @@ def make_submission_page(
     params:Mapping[str, Any],
     session:Session,
     course_desc:Mapping[str,Any],
-    project_name:str,
+    project_id:str,
     accounts:Dict[str,Any],
     submit_page:str,
     receive_page:str,
@@ -848,42 +797,45 @@ def make_submission_page(
     account = accounts[session.name]
 
     # Extract some values
-    desc = course_desc['projects'][project_name]
+    desc = course_desc['projects'][project_id]
     title = desc['title']
-    title_clean = title.replace(' ', '_')
     due_time = desc['due_time']
     course_name = course_desc['course_long']
 
     p:List[str] = []
     page_start(p, session)
-    p.append(f'<big><b>{course_name}</b></big><br>')
-    p.append(f'<big>Submit <b>{title}</b></big><br>')
 
-    # Tell the student if they have already received credit for this assignment.
-    if title_clean in account and account[title_clean] > 0:
-        p.append(f'(You have already received credit for {title}. Your score is {account[title_clean]}<br><br>.')
+    if False:
+        p.append('Sorry, submissions are no longer being accepted.<br><br>')
+    else:
+        p.append(f'<big><b>{course_name}</b></big><br>')
+        p.append(f'<big>Submit <b>{title}</b></big><br>')
 
-    # Make the upload form
-    p.append(f'Due time: {due_time}<br>')
-    now_time = datetime.now()
-    p.append(f'Now time: {now_time}<br>')
-    tokens = account["toks"]
-    p.append(f'Your late token balance: {tokens}<br>')
-    p.append('<br>')
-    p.append('Please upload your zip file:')
-    p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
-    p.append('    <input type="file" id="file" name="filename">')
-    p.append('    <input type="submit">')
-    p.append('</form>')
-    p.append('<script>\n')
-    p.append('const uploadField = document.getElementById("file");\n')
-    p.append('uploadField.onchange = function() {\n')
-    p.append('    if(this.files[0].size > 2000000){\n')
-    p.append('       alert("That file is too big!");\n')
-    p.append('       this.value = "";\n')
-    p.append('    }\n')
-    p.append('}\n')
-    p.append('</script>')
+        # Tell the student if they have already received credit for this assignment.
+        if project_id in account and account[project_id] > 0:
+            p.append(f'(You have already received credit for {title}. Your score is {account[project_id]}<br><br>.')
+
+        # Make the upload form
+        p.append(f'Due time: {due_time}<br>')
+        now_time = datetime.now()
+        p.append(f'Now time: {now_time}<br>')
+        tokens = account["toks"]
+        p.append(f'Your late token balance: {tokens}<br>')
+        p.append('<br>')
+        p.append('Please upload your zip file:')
+        p.append(f'<form action="{receive_page}" method="post" enctype="multipart/form-data">')
+        p.append('    <input type="file" id="file" name="filename">')
+        p.append('    <input type="submit">')
+        p.append('</form>')
+        p.append('<script>\n')
+        p.append('const uploadField = document.getElementById("file");\n')
+        p.append('uploadField.onchange = function() {\n')
+        p.append('    if(this.files[0].size > 2000000){\n')
+        p.append('       alert("That file is too big!");\n')
+        p.append('       this.value = "";\n')
+        p.append('    }\n')
+        p.append('}\n')
+        p.append('</script>')
 
     # Make the view scores form
     p.append('<br><br>')
@@ -918,7 +870,7 @@ def receive_submission(
         params: Mapping[str, Any],
         session: Session,
         course_desc:Mapping[str,Any],
-        project_name:str,
+        proj_id:str,
         accounts:Dict[str,Any],
         submit_page:str,
 ) -> Mapping[str,Any]:
@@ -935,15 +887,14 @@ def receive_submission(
     submission_grace_seconds = 15 * 60
     seconds_per_day = 24 * 60 * 60
     now_time = datetime.now()
-    desc = course_desc['projects'][project_name]
+    desc = course_desc['projects'][proj_id]
     days_late = max(0, int((((now_time - desc['due_time']).total_seconds() - submission_grace_seconds) // seconds_per_day) + 1))
 
     # Unpack the submission
     try:
-        desc = course_desc['projects'][project_name]
+        desc = course_desc['projects'][proj_id]
         title = desc['title']
-        title_clean = title.replace(' ', '_')
-        folder = unpack_and_check_submission(params, course_desc['course_short'], title_clean, session.name)
+        base_path, folder = unpack_submission(params, course_desc['course_short'], proj_id, session.name)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         p:List[str] = []
@@ -956,13 +907,14 @@ def receive_submission(
                 'results': ''.join(p),
             },
         }
-    
+
     return {
         'succeeded': True,
         'account': account,
         'days_late': days_late,
+        'base_path': base_path,
         'folder': folder,
-        'title_clean': title_clean,
+        'proj_id': proj_id,
     }
 
 
@@ -1082,7 +1034,7 @@ def eval_thread(
         eval_func:Callable[[Mapping[str,Any]],Mapping[str,Any]], 
         id:str,
         course_desc:Mapping[str,Any],
-        proj_short_name: str,
+        proj_id: str,
         accounts:Dict[str,Any],
         submit_page:str, 
 ) -> None:
@@ -1091,7 +1043,7 @@ def eval_thread(
     the_job = jobs[id]
 
     # Receive and unpack the submission
-    submission = receive_submission(params, session, course_desc, proj_short_name, accounts, submit_page)
+    submission = receive_submission(params, session, course_desc, proj_id, accounts, submit_page)
     if not ('succeeded' in submission) or not submission['succeeded']:
         the_job.results = cast(Mapping[str,Any], submission['page'])
         return
@@ -1144,7 +1096,7 @@ def launch_eval_thread(
         params: Mapping[str, Any], 
         session: Session, 
         course_desc:Mapping[str,Any],
-        proj_short_name: str,
+        proj_id: str,
         accounts:Dict[str,Any],
         submit_page:str, 
 ) -> Mapping[str,Any]:
@@ -1158,12 +1110,11 @@ def launch_eval_thread(
     account = accounts[session.name]
 
     # Check whether this project has already been submitted
-    desc = course_desc['projects'][proj_short_name]
+    desc = course_desc['projects'][proj_id]
     title = desc['title']
-    title_clean = title.replace(' ', '_')
-    if title_clean in account and account[title_clean] > 0 and (not 'ta' in account or account['ta'] != 'true'):
-        submission = receive_submission(params, session, course_desc, proj_short_name, accounts, submit_page)
-        score = account[title_clean]
+    if proj_id in account and account[proj_id] > 0 and (not 'ta' in account or account['ta'] != 'true'):
+        submission = receive_submission(params, session, course_desc, proj_id, accounts, submit_page)
+        score = account[proj_id]
         p:List[str] = []
         page_start(p, session)
         p.append(f'Thank you. Your resubmission of {title} has been received. Your score for this project remains {score}.')
@@ -1175,14 +1126,14 @@ def launch_eval_thread(
     # Make the job
     id = make_random_id()
     jobs[id] = Job()
-    eval_func = course_desc['projects'][proj_short_name]['evaluator']
+    eval_func = course_desc['projects'][proj_id]['evaluator']
     thread = threading.Thread(target=eval_thread, args=(
         params, 
         session, 
         eval_func, 
         id, 
         course_desc, 
-        proj_short_name, 
+        proj_id, 
         accounts,
         submit_page,
     ))
@@ -1191,7 +1142,7 @@ def launch_eval_thread(
 
 # Generates functions that handle submitting and receiving project submissions
 def page_maker_factory(
-        proj_short_name:str, 
+        proj_id:str, 
         submit_page:str, 
         receive_page:str, 
         course_desc:Mapping[str,Any],
@@ -1202,7 +1153,7 @@ def page_maker_factory(
             params,
             session,
             course_desc,
-            proj_short_name,
+            proj_id,
             accounts,
             submit_page,
             receive_page,
@@ -1212,7 +1163,7 @@ def page_maker_factory(
             params,
             session,
             course_desc,
-            proj_short_name,
+            proj_id,
             accounts,
             submit_page,
         )

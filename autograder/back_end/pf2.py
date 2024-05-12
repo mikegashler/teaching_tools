@@ -23,7 +23,66 @@ def next_num(s:str) -> float:
     else:
         raise ValueError('No number found')
 
+def submission_checks(submission:Mapping[str,Any]) -> None:
+    # Check for forbidden files or folders
+    forbidden_folders = [
+        '.DS_Store',
+        '.mypy_cache',
+        '__pycache__',
+        '.git',
+        '.ipynb_checkpoints',
+        '__MACOSX',
+        '.settings',
+        'backup',
+        'data',
+        'images',
+        'pics',
+    ]
+    forbidden_extensions = [
+        '', # usually compiled C++ apps
+        '.bat', # windows batch files
+        '.class', # compiled java
+        '.dat',
+        '.exe', 
+        '.htm',
+        '.html',
+        '.ncb',
+        '.pcb',
+        '.pickle',
+        '.pkl',
+        '.o', # C++ object files
+        '.obj', # C++ object files
+        '.pdb',
+        '.ps1', # powershell scripts
+        '.suo', 
+        '.tmp',
+    ]
+    file_count = 0
+    base_path = submission['base_path']
+    for path, folders, files in os.walk(base_path):
+        for forbidden_folder in forbidden_folders:
+            if forbidden_folder in folders:
+                raise autograder.RejectSubmission(f'Your zip file contains a forbidden folder: "{forbidden_folder}". (Note that the zip command adds to an existing zip file. To remove a file it is necessary to delete your zip file and make a fresh one.)', [], '', '')
+        for filename in files:
+            _, ext = os.path.splitext(filename)
+            for forbidden_extension in forbidden_extensions:
+                if ext == forbidden_extension:
+                    raise autograder.RejectSubmission(f'Your zip contains an unnecessary file: "{filename}". Please submit only your code and build script.', [], '', '')
+            if ext == '.zip' and path != base_path:
+                raise autograder.RejectSubmission(f'Your zip contains other zip files. Please submit only your code and build script.  (Note that the zip command adds to an existing zip file. To remove a file it is necessary to delete your zip file and make a fresh one.)', [], '', '')
+            if os.stat(os.path.join(path, filename)).st_size > 2000000:
+                msg =f'The file {filename} is too big. All files must be less than 2MB.'
+                log(msg)
+                raise autograder.RejectSubmission(msg, [], '', '')
+        file_count += len(files)
+
+    # Check that there are not too many files
+    max_files = 50
+    if file_count > max_files:
+        raise autograder.RejectSubmission(f'Your zip file contains {file_count} files! Only {max_files} are allowed.  (Note that the zip command adds to an existing zip file. To remove files it is necessary to delete your zip file and make a fresh one.)', [], '', '')
+
 def basic_checks(args:List[str], input:str, output:str) -> None:
+    # Check for errors
     if output.find('error:') >= 0:
         raise autograder.RejectSubmission(
             'It looks like there were errors.',
@@ -35,9 +94,10 @@ def basic_checks(args:List[str], input:str, output:str) -> None:
             args, input, output,
         )
 
-def evaluate_proj1(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Test 1: See if it produces the exactly correct output
+def evaluate_hello(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
 
+    # Test 1: See if it produces the exactly correct output
     args = ['aaa', 'bbb', 'ccc']
     input = '''Aloysius
 8'''
@@ -70,7 +130,9 @@ Thanks for stopping by. Have a nice day!
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj2(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_debugging(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: not debug mode, exactly 8 items
     args:List[str] = []
     input = '''alpha
@@ -168,7 +230,9 @@ tricky
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj3(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_stacks(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: Make sure the name was changed and it prints words entered so far
     args:List[str] = []
     input = '''1
@@ -247,7 +311,9 @@ pig
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj4(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_flood_fill(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it produces the exactly correct output
     args = ['quiet']
     input = '''3
@@ -301,7 +367,9 @@ x
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj5(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_boggle(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: Test Boggle output
     args = ['quiet']
     input = '''3
@@ -437,7 +505,9 @@ wrist
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_linked_lists(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if the unit test passes
     args = ['quiet']
     input = '''7
@@ -454,7 +524,9 @@ def evaluate_proj6(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj7(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_merge_sort(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: Sort a very small list
     args = ['quiet']
     input = '''1
@@ -534,7 +606,9 @@ zebra
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj8(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_binary_search(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it produces the exactly correct output
     args = ['quiet']
     input = '''9
@@ -617,7 +691,8 @@ fish
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj9(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_memory(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
 
     # Test 1: Measure baseline values for the number of instantiations and deletions
     args = ['quiet']
@@ -740,7 +815,9 @@ anaa
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj10(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_hash_tables(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it produces the exactly correct output
     args = ['quiet']
     input = '''12
@@ -778,7 +855,9 @@ pineapple
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_proj11(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_heaps(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
     # Test 1: See if it produces the exactly correct output
     args = ['quiet']
     input = '''14
@@ -826,33 +905,33 @@ course_desc:Mapping[str,Any] = {
     'course_long': 'Programming Foundations II',
     'course_short': 'pf2',
     'projects': {
-        'proj1': {
+        'hello': {
             'title': 'Project 1',
             'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj1,
+            'evaluator': evaluate_hello,
         },
-        'proj2': {
+        'debugging': {
             'title': 'Project 2',
             'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj2,
+            'evaluator': evaluate_debugging,
         },
-        'proj3': {
+        'stacks': {
             'title': 'Project 3',
             'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj3,
+            'evaluator': evaluate_stacks,
         },
-        'proj4': {
+        'flood_fill': {
             'title': 'Project 4',
             'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj4,
+            'evaluator': evaluate_flood_fill,
         },
         'midterm1': {
             'title': 'Midterm 1',
@@ -860,26 +939,26 @@ course_desc:Mapping[str,Any] = {
             'weight': 18,
             'points': 86,
         },
-        'proj5': {
+        'boggle': {
             'title': 'Project 5',
             'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj5,
+            'evaluator': evaluate_boggle,
         },
-        'proj6': {
+        'linked_lists': {
             'title': 'Project 6',
             'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj6,
+            'evaluator': evaluate_linked_lists,
         },
-        'proj7': {
+        'merge_sort': {
             'title': 'Project 7',
             'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj7,
+            'evaluator': evaluate_merge_sort,
         },
         'midterm2': {
             'title': 'Midterm 2',
@@ -887,26 +966,33 @@ course_desc:Mapping[str,Any] = {
             'weight': 18,
             'points': 67,
         },
-        'proj8': {
+        'binary_search': {
             'title': 'Project 8',
             'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj8,
+            'evaluator': evaluate_binary_search,
         },
-        'proj9': {
+        'memory': {
             'title': 'Project 9',
             'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj9,
+            'evaluator': evaluate_memory,
         },
-        'proj11': {
-            'title': 'Project 11',
+        'heaps': {
+            'title': 'Project 10',
             'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_proj11,
+            'evaluator': evaluate_heaps,
+        },
+        'hash_tables': {
+            'title': 'Project 11',
+            'due_time': datetime(year=2024, month=5, day=2, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 4,
+            'evaluator': evaluate_hash_tables,
         },
         'lab': {
             'title': 'Lab participation',
@@ -918,7 +1004,7 @@ course_desc:Mapping[str,Any] = {
             'title': 'Final exam',
             'due_time': datetime(year=2024, month=5, day=8, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 100,
+            'points': 85,
         },
     }
 }
@@ -937,13 +1023,13 @@ def accept_submission(submission:Mapping[str,Any]) -> Mapping[str,Any]:
     with accept_lock:
         account = submission['account']
         days_late = submission['days_late']
-        title_clean = submission['title_clean']
+        proj_id = submission['proj_id']
         covered_days = min(days_late, account["toks"])
         days_late -= covered_days
         score = max(30, 100 - 3 * days_late)
-        if not (title_clean in account): # to protect from multiple simultaneous accepts
-            log(f'Passed: title={title_clean}, days_late={days_late}, score={score}')
-            account[title_clean] = score
+        if not (proj_id in account): # to protect from multiple simultaneous accepts
+            log(f'Passed: title={proj_id}, days_late={days_late}, score={score}')
+            account[proj_id] = score
             account["toks"] -= covered_days
             autograder.save_accounts(course_desc, accounts)
 
