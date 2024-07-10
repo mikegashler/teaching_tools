@@ -54,6 +54,7 @@ chmod 755 ./run.bash
 # Clean up some garbage
 find . -name ".mypy_cache" -exec rm -rf {} \;
 find . -name "__pycache__" -exec rm -rf {} \;
+find . -name "*.class" -exec rm -rf {} \;
 exit 0
 '''
 
@@ -118,12 +119,10 @@ def unpack_submission(params:Mapping[str, Any], course:str, project_id:str, stud
     date_stamp = f'{t.year:04}-{t.month:02}-{t.day:02}_{t.hour:02}-{t.minute:02}-{t.second:02}-{t.microsecond:06}'
     student = student.replace(' ', '_').replace(',', '_').replace('\'', '_')
     basename = os.path.join(course, project_id, student, date_stamp)
-    log(f'making dirs: {basename}')
     os.makedirs(basename)
     zipname = os.path.join(basename, os.path.basename(zipfilename))
 
     # Unzip it
-    log(f'moving {zipfilename} to {zipname}')
     shutil.move(zipfilename, zipname)
     with zipfile.ZipFile(zipname, 'r') as zip_ref:
         zip_ref.extractall(basename)
@@ -602,7 +601,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         session.name = params['impersonate']
         p.append(f'You are now impersonating {session.name}<br><br>')
 
-    # Set many scores action
+    # Set multiple scores action
     if 'project' in params and 'set_scores' in params:
         rows = params['set_scores'].split('\n')
         for zline, row in enumerate(rows):
@@ -797,8 +796,8 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
-    # Set many project scores form
-    p.append('<h2>Set many project scores</h3>')
+    # Set multiple project scores form
+    p.append('<h2>Set multiple project scores</h3>')
     p.append('<p>Names should be canonicalized.</p>')
     p.append(f'<form action="{dest_page}"')
     p.append(' method="post">')

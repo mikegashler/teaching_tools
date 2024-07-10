@@ -9,6 +9,7 @@ import re
 import os
 import json
 from session import Session
+import shutil
 
 # Returns the first number in the string.
 # Throws if there is not one.
@@ -23,6 +24,62 @@ def next_num(s:str) -> float:
     else:
         raise ValueError('No number found')
 
+# Comments out some java imports that we will be replacing with our own special versions
+# so we can take control of the GUI
+def comment_out_gui_imports(file_string:str) -> str:
+    file_string = file_string.replace('import javax.swing.JFrame;', '//import javax.swing.JFrame;')
+    file_string = file_string.replace('import javax.swing.JPanel;', '//import javax.swing.JPanel;')
+    file_string = file_string.replace('import java.awt.Graphics2D;', '//import java.awt.Graphics2D;')
+    file_string = file_string.replace('import java.awt.Graphics;', '//import java.awt.Graphics;')
+    file_string = file_string.replace('import java.awt.Toolkit;', '//import java.awt.Toolkit;')
+    return file_string
+
+# Injects a little code into Controller.java to give us control of the GUI
+def infect_controller(file_string:str) -> str:
+    # Find the spots in Controller.java where we can inject our code
+    class_controller_pos = file_string.find('class Controller')
+    if class_controller_pos < 0:
+        raise autograder.RejectSubmission('Expected Controller.java to contain "class Controller"', [], '', '')
+    class_start_pos = file_string.find('{', class_controller_pos)
+    if class_start_pos < 0:
+        raise autograder.RejectSubmission('Expected a "{" after "class Controller"', [], '', '')
+    constructor_sig_pos = file_string.find('Controller(', class_start_pos)
+    if constructor_sig_pos < 0:
+        raise autograder.RejectSubmission('Expected "Controller(" to occur in class Controller', [], '', '')
+    constructor_start_pos = file_string.find('{', constructor_sig_pos)
+    if constructor_start_pos < 0:
+        raise autograder.RejectSubmission('Expected a "{" after "Controller("', [], '', '')
+    update_sig_pos = file_string.find(' update(', class_start_pos)
+    if update_sig_pos < 0:
+        raise autograder.RejectSubmission('Expected " update(" to occur in class Controller', [], '', '')
+    update_start_pos = file_string.find('{', update_sig_pos)
+    if update_start_pos < 0:
+        raise autograder.RejectSubmission('Expected a "{" after "void update()"', [], '', '')
+    class_start_pos += 1
+    constructor_start_pos += 1
+    update_start_pos += 1
+
+    # Inject the Java code
+    imports_to_inject = '''
+'''
+    member_variables_to_inject = '''
+        int injected_frame_count;
+'''
+    initializers_to_inject = '''
+        this.injected_frame_count = 0;
+'''
+    update_code_to_inject = '''
+        this.injected_frame_count++;
+        System.out.println(this.injected_frame_count);
+        if (this.injected_frame_count >= 100)
+            System.exit(0);
+'''
+    if update_start_pos > constructor_start_pos:
+        file_string = imports_to_inject + file_string[:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:]
+    else:
+        file_string = imports_to_inject + file_string[:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:]
+    return file_string
+
 def submission_checks(submission:Mapping[str,Any]) -> None:
     # Check for forbidden files or folders
     forbidden_folders = [
@@ -34,9 +91,7 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
         '__MACOSX',
         '.settings',
         'backup',
-        'data',
-        'images',
-        'pics',
+        '.class',
     ]
     forbidden_extensions = [
         '', # usually compiled C++ apps
@@ -81,6 +136,42 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
     if file_count > max_files:
         raise autograder.RejectSubmission(f'Your zip file contains {file_count} files! Only {max_files} are allowed.  (Note that the zip command adds to an existing zip file. To remove files it is necessary to delete your zip file and make a fresh one.)', [], '', '')
 
+    # Touch up all java files besides controller.java
+    project_folder = submission['folder']
+    for fn in os.listdir(project_folder):
+        _, ext = os.path.splitext(fn)
+        if ext == '.java':
+            if fn != 'Controller.java':
+                full_path = os.path.join(project_folder, fn)
+                with open(full_path, 'r') as f:
+                    file_string = f.read()
+                file_string = comment_out_gui_imports(file_string)
+                with open(full_path, 'w') as f2:
+                    f2.write(file_string)
+                print(f'rewrote {full_path}')
+
+    # Inject java_gui_checker files
+    java_gui_checker_path = 'back_end/java_gui_checker'
+    for fn in os.listdir(java_gui_checker_path):
+        src_path = os.path.join(java_gui_checker_path, fn)
+        dst_path = os.path.join(project_folder, fn)
+        shutil.copyfile(src_path, dst_path)
+
+    # Touch up controller.java
+    full_path = os.path.join(project_folder, 'Controller.java')
+    log(f'looking for {full_path}')
+    if not os.path.isfile(full_path):
+        raise autograder.RejectSubmission(f'Expected a file named Controller.java in the same folder as run.bash', [], '', '')
+    with open(full_path, 'r') as f:
+        file_string = f.read()
+    file_string = comment_out_gui_imports(file_string)
+    file_string = infect_controller(file_string)
+    with open(full_path, 'w') as f2:
+        f2.write(file_string)
+
+
+
+
 def basic_checks(args:List[str], input:str, output:str) -> None:
     # Check for errors
     if output.find('error:') >= 0:
@@ -94,7 +185,7 @@ def basic_checks(args:List[str], input:str, output:str) -> None:
             args, input, output,
         )
 
-def evaluate_hello(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+def evaluate_map_editor(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
 
     # Test 1: See if it produces the exactly correct output
@@ -902,15 +993,15 @@ antelope
     return accept_submission(submission)
 
 course_desc:Mapping[str,Any] = {
-    'course_short': 'pf2',
-    'course_long': 'Programming Foundations II',
+    'course_short': 'pp',
+    'course_long': 'Programming Paradigms',
     'projects': {
-        'hello': {
-            'title': 'Project 1 - Hello World',
-            'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
+        'map_editor': {
+            'title': 'Project 1 - Map Editor',
+            'due_time': datetime(year=2024, month=9, day=2, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_hello,
+            'evaluator': evaluate_map_editor,
         },
         'debugging': {
             'title': 'Project 2 - Debugging',

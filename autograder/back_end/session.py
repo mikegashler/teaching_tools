@@ -18,7 +18,6 @@ class Session():
         self.last_ip = ''
 
     def logged_in(self) -> bool:
-        log(f'logged in as {self.name}')
         return len(self.name) > 0
 
     def marshal(self) -> Mapping[str, Any]:

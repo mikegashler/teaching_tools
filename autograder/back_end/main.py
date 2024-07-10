@@ -1,9 +1,6 @@
 import os
 os.chdir(os.path.join(os.path.dirname(__file__), '..'))
 
-import banana_quest
-import pf2
-import dsa
 import autograder
 import json
 from typing import Dict, Mapping, Any, Callable, List
@@ -15,6 +12,17 @@ import atexit
 
 from session import Session, get_or_make_session, load_state, save_sessions
 from http_daemon import log, WebServer, Response, delay_open_url
+import banana_quest
+import pf2
+import dsa
+import pp
+
+# The list of courses this server currently services
+active_courses = [
+    pf2,
+    dsa,
+    pp,
+]
 
 web_server:WebServer
 
@@ -136,12 +144,14 @@ def main() -> None:
         print("Not monitoring (because 'monitor' was not specified in config.json)")
 
     # Generate submission and receive pages
-    autograder.generate_submit_and_receive_pages(page_makers, pf2.course_desc, pf2.accounts)
-    autograder.generate_submit_and_receive_pages(page_makers, dsa.course_desc, dsa.accounts)
+    for course in active_courses:
+        autograder.generate_submit_and_receive_pages(page_makers, course.course_desc, course.accounts)
+        page_makers[f'{course.course_desc["course_short"]}_view_scores.html'] = course.view_scores_page
+        page_makers[f'{course.course_desc["course_short"]}_admin.html'] = course.admin_page
 
     # Open a web browser if requested
     if len(sys.argv) > 1 and sys.argv[1] == 'open_browser':
-        delay_open_url(f'{host}:{port}', 0.2)
+        delay_open_url(f'http://{host}:{port}', 0.2)
 
     # Serve pages
     web_server.serve(make_page)

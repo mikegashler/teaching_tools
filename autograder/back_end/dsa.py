@@ -661,8 +661,8 @@ def evaluate_data_mining(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     return accept_submission(submission)
 
 course_desc:Mapping[str,Any] = {
-    'course_long': 'Data Structures & Algorithms',
     'course_short': 'dsa',
+    'course_long': 'Data Structures & Algorithms',
     'projects': {
         'hello': {
             'title': 'Project 1',
