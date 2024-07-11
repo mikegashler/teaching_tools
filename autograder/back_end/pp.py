@@ -136,38 +136,35 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
     if file_count > max_files:
         raise autograder.RejectSubmission(f'Your zip file contains {file_count} files! Only {max_files} are allowed.  (Note that the zip command adds to an existing zip file. To remove files it is necessary to delete your zip file and make a fresh one.)', [], '', '')
 
-    # Touch up all java files besides controller.java
+    # Touch up all java files to remove imports that we intend to override
     project_folder = submission['folder']
     for fn in os.listdir(project_folder):
         _, ext = os.path.splitext(fn)
         if ext == '.java':
-            if fn != 'Controller.java':
-                full_path = os.path.join(project_folder, fn)
-                with open(full_path, 'r') as f:
-                    file_string = f.read()
-                file_string = comment_out_gui_imports(file_string)
-                with open(full_path, 'w') as f2:
-                    f2.write(file_string)
-                print(f'rewrote {full_path}')
+            full_path = os.path.join(project_folder, fn)
+            with open(full_path, 'r') as f:
+                file_string = f.read()
+            file_string = comment_out_gui_imports(file_string)
+            with open(full_path, 'w') as f2:
+                f2.write(file_string)
+            print(f'rewrote {full_path}')
 
-    # Inject java_gui_checker files
+    # Add java_gui_checker files
     java_gui_checker_path = 'back_end/java_gui_checker'
     for fn in os.listdir(java_gui_checker_path):
         src_path = os.path.join(java_gui_checker_path, fn)
         dst_path = os.path.join(project_folder, fn)
         shutil.copyfile(src_path, dst_path)
 
-    # Touch up controller.java
-    full_path = os.path.join(project_folder, 'Controller.java')
-    log(f'looking for {full_path}')
-    if not os.path.isfile(full_path):
-        raise autograder.RejectSubmission(f'Expected a file named Controller.java in the same folder as run.bash', [], '', '')
-    with open(full_path, 'r') as f:
-        file_string = f.read()
-    file_string = comment_out_gui_imports(file_string)
-    file_string = infect_controller(file_string)
-    with open(full_path, 'w') as f2:
-        f2.write(file_string)
+    # # Touch up controller.java
+    # full_path = os.path.join(project_folder, 'Controller.java')
+    # if not os.path.isfile(full_path):
+    #     raise autograder.RejectSubmission(f'Expected a file named Controller.java in the same folder as run.bash', [], '', '')
+    # with open(full_path, 'r') as f:
+    #     file_string = f.read()
+    # file_string = infect_controller(file_string)
+    # with open(full_path, 'w') as f2:
+    #     f2.write(file_string)
 
 
 
