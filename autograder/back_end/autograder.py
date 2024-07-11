@@ -58,6 +58,13 @@ find . -name "*.class" -exec rm -rf {} \;
 exit 0
 '''
 
+launch_java = '''#!/bin/bash
+set -e
+javac *.java
+java Main $* < _stdin.txt
+find . -name "*.class" -exec rm -rf {} \;
+exit 0
+'''
 
 # Executes a submission with the specified args and input, and returns its output
 def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='', sandbox:bool=True) -> str:
@@ -100,18 +107,107 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
     cleaned_output = cleaned_output.replace('find: ‘./__pycache__’: No such file or directory', '')
     return cleaned_output
 
+# Injects a little code into Controller.java to give us control of the GUI
+def infect_controller(
+    file_string:str,
+    imports_to_inject:str,
+    member_variables_to_inject:str,
+    initializers_to_inject:str,
+    update_code_to_inject:str,
+) -> str:
+    # Find the spots in Controller.java where we can inject our code
+    class_controller_pos = file_string.find('class Controller')
+    if class_controller_pos < 0:
+        raise RejectSubmission('Expected Controller.java to contain "class Controller"', [], '', '')
+    class_start_pos = file_string.find('{', class_controller_pos)
+    if class_start_pos < 0:
+        raise RejectSubmission('Expected a "{" after "class Controller"', [], '', '')
+    constructor_sig_pos = file_string.find('Controller(', class_start_pos)
+    if constructor_sig_pos < 0:
+        raise RejectSubmission('Expected "Controller(" to occur in class Controller', [], '', '')
+    constructor_start_pos = file_string.find('{', constructor_sig_pos)
+    if constructor_start_pos < 0:
+        raise RejectSubmission('Expected a "{" after "Controller("', [], '', '')
+    update_sig_pos = file_string.find(' update(', class_start_pos)
+    if update_sig_pos < 0:
+        raise RejectSubmission('Expected " update(" to occur in class Controller', [], '', '')
+    update_start_pos = file_string.find('{', update_sig_pos)
+    if update_start_pos < 0:
+        raise RejectSubmission('Expected a "{" after "void update()"', [], '', '')
+
+    # Inject it
+    class_start_pos += 1
+    constructor_start_pos += 1
+    update_start_pos += 1
+    if update_start_pos > constructor_start_pos:
+        file_string = imports_to_inject + file_string[:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:]
+    else:
+        file_string = imports_to_inject + file_string[:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:]
+    return file_string
+
 # A special-purpose version of run_submission for Java programs in Programming Paradigms
 # that use a particular model-view-controller GUI interface.
-def run_java_gui_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='', sandbox:bool=True) -> str:
-    # Write the input to a file
+def run_java_gui_submission(
+    submission:Mapping[str,Any],
+    args:List[str]=[],
+    input:str='',
+    sandbox:bool=True,
+    imports_to_inject:str='',
+    member_variables_to_inject:str='',
+    initializers_to_inject:str='',
+    update_code_to_inject:str='',
+) -> str:
+    input = ''
     start_folder = submission['folder']
+    controller_build_me = os.path.join(start_folder, 'Controller.java')
+    controller_hack_me = os.path.join(start_folder, 'Controller.hack_me')
+    if not os.path.exists(controller_hack_me):
+        # Touch up all java files to remove imports we intend to override
+        for fn in os.listdir(submission['folder']):
+            _, ext = os.path.splitext(fn)
+            if ext == '.java':
+                full_path = os.path.join(submission['folder'], fn)
+                with open(full_path, 'r') as f:
+                    file_string = f.read()
+                    file_string = file_string.replace('import javax.swing.JFrame;', '//import javax.swing.JFrame;')
+                    file_string = file_string.replace('import javax.swing.JPanel;', '//import javax.swing.JPanel;')
+                    file_string = file_string.replace('import java.awt.Graphics2D;', '//import java.awt.Graphics2D;')
+                    file_string = file_string.replace('import java.awt.Graphics;', '//import java.awt.Graphics;')
+                    file_string = file_string.replace('import java.awt.Toolkit;', '//import java.awt.Toolkit;')
+                with open(full_path, 'w') as f2:
+                    f2.write(file_string)
+                print(f'rewrote {full_path}')
+
+        # Add java_gui_checker files
+        java_gui_checker_path = 'back_end/java_gui_checker'
+        for fn in os.listdir(java_gui_checker_path):
+            src_path = os.path.join(java_gui_checker_path, fn)
+            dst_path = os.path.join(submission['folder'], fn)
+            shutil.copyfile(src_path, dst_path)
+
+        # Backup Controller.java (since we are going to infect it with checking code)
+        if os.path.exists(controller_build_me):
+            shutil.copyfile(controller_build_me, controller_hack_me)
+        else:
+            raise RejectSubmission('Expected a file named Controller.java in the same folder as run.bash', args, input, '')
+        if not os.path.exists(controller_hack_me):
+            raise RejectSubmission('Internal error: Failed to back up Controller.java', args, input, '')
+
+    # Infect Controller.java with checking code
+    with open(controller_hack_me, 'r') as f:
+        file_string = f.read()
+    file_string = infect_controller(file_string, imports_to_inject, member_variables_to_inject, initializers_to_inject, update_code_to_inject)
+    with open(controller_build_me, 'w') as f2:
+        f2.write(file_string)
+
+    # Write the input to a file
     with open(os.path.join(start_folder, '_stdin.txt'), 'w') as f:
         f.write(input)
         f.write('\n\n0\n\n0\n\n0\n\n') # Add a few extra lines to flush any superfluous input prompts
 
     # Put a launch script in the same folder as run.bash
     with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
-        f.write(launch_script)
+        f.write(launch_java)
 
     try:
         # Launch it
@@ -137,9 +233,6 @@ def run_java_gui_submission(submission:Mapping[str,Any], args:List[str]=[], inpu
     # Clean the output
     max_output_size = 2000000
     cleaned_output = output[:max_output_size].decode()
-    cleaned_output = cleaned_output.replace('Success: no issues found ', 'MyPy found no typing issues ')
-    cleaned_output = cleaned_output.replace('find: ‘./.mypy_cache’: No such file or directory', '')
-    cleaned_output = cleaned_output.replace('find: ‘./__pycache__’: No such file or directory', '')
     return cleaned_output
 
 # Receives a submission. Unzips it. Checks for common problems.
