@@ -137,11 +137,10 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
         raise autograder.RejectSubmission(f'Your zip file contains {file_count} files! Only {max_files} are allowed.  (Note that the zip command adds to an existing zip file. To remove files it is necessary to delete your zip file and make a fresh one.)', [], '', '')
 
     # Touch up all java files to remove imports that we intend to override
-    project_folder = submission['folder']
-    for fn in os.listdir(project_folder):
+    for fn in os.listdir(submission['folder']):
         _, ext = os.path.splitext(fn)
         if ext == '.java':
-            full_path = os.path.join(project_folder, fn)
+            full_path = os.path.join(submission['folder'], fn)
             with open(full_path, 'r') as f:
                 file_string = f.read()
             file_string = comment_out_gui_imports(file_string)
@@ -153,21 +152,8 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
     java_gui_checker_path = 'back_end/java_gui_checker'
     for fn in os.listdir(java_gui_checker_path):
         src_path = os.path.join(java_gui_checker_path, fn)
-        dst_path = os.path.join(project_folder, fn)
+        dst_path = os.path.join(submission['folder'], fn)
         shutil.copyfile(src_path, dst_path)
-
-    # # Touch up controller.java
-    # full_path = os.path.join(project_folder, 'Controller.java')
-    # if not os.path.isfile(full_path):
-    #     raise autograder.RejectSubmission(f'Expected a file named Controller.java in the same folder as run.bash', [], '', '')
-    # with open(full_path, 'r') as f:
-    #     file_string = f.read()
-    # file_string = infect_controller(file_string)
-    # with open(full_path, 'w') as f2:
-    #     f2.write(file_string)
-
-
-
 
 def basic_checks(args:List[str], input:str, output:str) -> None:
     # Check for errors
@@ -184,6 +170,16 @@ def basic_checks(args:List[str], input:str, output:str) -> None:
 
 def evaluate_map_editor(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
+
+    # Touch up controller.java
+    full_path = os.path.join(submission['folder'], 'Controller.java')
+    if not os.path.isfile(full_path):
+        raise autograder.RejectSubmission(f'Expected a file named Controller.java in the same folder as run.bash', [], '', '')
+    with open(full_path, 'r') as f:
+        file_string = f.read()
+    file_string = infect_controller(file_string)
+    with open(full_path, 'w') as f2:
+        f2.write(file_string)
 
     # Test 1: See if it produces the exactly correct output
     args = ['aaa', 'bbb', 'ccc']

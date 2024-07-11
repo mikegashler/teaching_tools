@@ -100,6 +100,48 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
     cleaned_output = cleaned_output.replace('find: ‘./__pycache__’: No such file or directory', '')
     return cleaned_output
 
+# A special-purpose version of run_submission for Java programs in Programming Paradigms
+# that use a particular model-view-controller GUI interface.
+def run_java_gui_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='', sandbox:bool=True) -> str:
+    # Write the input to a file
+    start_folder = submission['folder']
+    with open(os.path.join(start_folder, '_stdin.txt'), 'w') as f:
+        f.write(input)
+        f.write('\n\n0\n\n0\n\n0\n\n') # Add a few extra lines to flush any superfluous input prompts
+
+    # Put a launch script in the same folder as run.bash
+    with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
+        f.write(launch_script)
+
+    try:
+        # Launch it
+        if sandbox:
+            subprocess.run(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
+            cp = subprocess.run(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            output = cp.stdout
+        else:
+            cp = subprocess.run(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            output = cp.stdout
+    except CalledProcessError as cpe:
+        print(traceback.format_exc(), file=sys.stderr)
+        raise RejectSubmission('There was an error running this submission', args, input, f"error: non-zero return code. (Your program should return 0 if it is successful.): {str(cpe)}")
+    except SubprocessError as se:
+        print(traceback.format_exc(), file=sys.stderr)
+        raise RejectSubmission('There was an error running this submission', args, input, f"error: Timed out. (This usually indicates an endless loop in your code.): {str(se)}")
+    except Exception as e:
+        output = b"error: unrecognized error."
+        print('Unrecognized error:')
+        print(traceback.format_exc(), file=sys.stderr)
+        raise RejectSubmission('There was an error running this submission', args, input, f"Unrecognized error: {str(e)}")
+
+    # Clean the output
+    max_output_size = 2000000
+    cleaned_output = output[:max_output_size].decode()
+    cleaned_output = cleaned_output.replace('Success: no issues found ', 'MyPy found no typing issues ')
+    cleaned_output = cleaned_output.replace('find: ‘./.mypy_cache’: No such file or directory', '')
+    cleaned_output = cleaned_output.replace('find: ‘./__pycache__’: No such file or directory', '')
+    return cleaned_output
+
 # Receives a submission. Unzips it. Checks for common problems.
 # Executes it, and returns the output as a string.
 # Throws a ValueError if anything is wrong with the submission.
