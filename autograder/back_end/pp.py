@@ -1,15 +1,12 @@
-from typing import Mapping, Any, List, Dict, cast
+from typing import Mapping, Any, List, Dict
 from datetime import datetime
 from http_daemon import log
 from datetime import datetime
 from threading import Lock
 import autograder
-import sys
 import re
 import os
-import json
 from session import Session
-import shutil
 
 # Returns the first number in the string.
 # Throws if there is not one.
@@ -66,7 +63,7 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
             _, ext = os.path.splitext(filename)
             for forbidden_extension in forbidden_extensions:
                 if ext == forbidden_extension:
-                    raise autograder.RejectSubmission(f'Your zip contains an unnecessary file: "{filename}". Please submit only your code and build script.', [], '', '')
+                    raise autograder.RejectSubmission(f'Your zip contains an unnecessary file: "{filename}". Please submit only your code and your run.bash script.', [], '', '')
             if ext == '.zip' and path != base_path:
                 raise autograder.RejectSubmission(f'Your zip contains other zip files. Please submit only your code and build script.  (Note that the zip command adds to an existing zip file. To remove a file it is necessary to delete your zip file and make a fresh one.)', [], '', '')
             if os.stat(os.path.join(path, filename)).st_size > 2000000:
@@ -84,44 +81,493 @@ def basic_checks(args:List[str], input:str, output:str) -> None:
     # Check for errors
     if output.find('error:') >= 0:
         raise autograder.RejectSubmission(
-            'It looks like there were errors.',
+            'There were errors.',
             args, input, output,
         )
-    if output.find('segmentation fault') >= 0:
+    if output.find('Exception in thread') >= 0:
         raise autograder.RejectSubmission(
-            'It looks like there was a segmentation fault. (This means you wrote to some place in memory you did not allocate.)',
+            'An exception was thrown.',
             args, input, output,
         )
 
 def evaluate_map_editor(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
 
-    # Test 1: See if it produces the exactly correct output
-    args = ['aaa', 'bbb', 'ccc']
+    # Test 1
+    args:List[str] = []
     input = ''
     output = autograder.run_java_gui_submission(
         submission=submission,
         args=args,
         input=input,
         sandbox=False,
-        imports_to_inject = '''
-''',
-        member_variables_to_inject = '''
-    int injected_frame_count;
-''',
-        initializers_to_inject = '''
-        this.injected_frame_count = 0;
-''',
         update_code_to_inject = '''
-        this.injected_frame_count++;
-        System.out.println(this.injected_frame_count);
-        if (this.injected_frame_count >= 100)
-            System.exit(0);
+            if (this.ag_frame_count == 2)
+            {
+                if (!this.ag_screen_cleared)
+                    this.ag_terminate("In View.paintComponent, the screen should be cleared with the background color each frame before images are drawn.");
+                AGSprite im = this.ag_find_sprite(0, 0);
+                if (im == null)
+                    this.ag_terminate("The currently selected image should be displayed in the top-left corner of the screen.");
+                ag_first_selected_image = im.image;
+
+                // Click to change the currently selected image
+                this.ag_click(5, 5, 1);
+            }
+            else if (this.ag_frame_count == 4)
+            {
+                AGSprite im = this.ag_find_sprite(0, 0);
+                if (im == null) {
+                    this.ag_terminate("After clicking in the region of the currenly selected image, no selected image was displayed there anymore. An image should always be displayed there.");
+                }
+                ag_second_selected_image = im.image;
+                if (ag_second_selected_image == ag_first_selected_image)
+                {
+                    this.ag_terminate("When the user clicks in the region of the currently selected image (in the top-left corner), it is supposed to change to the next image (and the former image should no longer be drawn).");
+                }
+            }
+            else if (this.ag_frame_count == 6)
+            {
+                // Place an item on the map
+                this.ag_click(500, 300, 1);
+                ag_print_images();
+            }
+            else if (this.ag_frame_count == 8)
+            {
+                if (this.ag_sprites.size() < 2)
+                {
+                    this.ag_terminate("Clicking on the map should add an item to the map. (After clicking, the selected item was still the only image being drawn.)");
+                }
+                AGSprite recently_placed_item = this.ag_find_sprite(500, 300);
+                if (recently_placed_item == null || recently_placed_item.image != ag_second_selected_image)
+                    this.ag_terminate("When the user clicks on the map, it should place an item of the currently selected image, and each image should only be loaded once.");
+                int target_x = 500 - recently_placed_item.image.getWidth(null) / 2;
+                int target_y = 300 - recently_placed_item.image.getHeight(null);
+                int sum_diff = Math.abs(target_x - recently_placed_item.x) + Math.abs(target_y - recently_placed_item.y);
+                if (sum_diff > 20)
+                {
+                    ag_print_images();
+                    ag_print_images();
+                    this.ag_terminate("The image should be placed such that its bottom center is where the user clicked. Clicked at 500,300. Image width is " + Integer.toString(recently_placed_item.image.getWidth(null)) + ". Image height is " + Integer.toString(recently_placed_item.image.getHeight(null)) + ". Image drawn at " + Integer.toString(recently_placed_item.x) + "," + Integer.toString(recently_placed_item.y));
+                }
+            }
+            else if (this.ag_frame_count >= 9 && this.ag_frame_count < 40)
+            {
+                // Cycle through all the images several times
+                this.ag_click(15, 15, 1);
+            }
+            else if (this.ag_frame_count == 42)
+            {
+                ag_print_images();
+                this.ag_click(50, 400, 1);
+                this.ag_click(400, 50, 1);
+                ag_print_images();
+            }
+            else if (this.ag_frame_count == 44)
+            {
+                if (this.ag_sprites.size() != 4) {
+                    ag_print_images();
+                    this.ag_terminate("Each click on the map (not including clicks on the currently selected image) should add one item to the map. After only 3 clicks on the map, there are " + Integer.toString(this.ag_sprites.size() - 1) + " map items (not including the currently selected image).");
+                }
+            }
+            else if (this.ag_frame_count >= 100)
+                this.ag_terminate("passed");
 ''',
     )
-    if output != 'xyz':
+    basic_checks(args, input, output)
+    try:
+        with open(os.path.join(submission['folder'], 'ag_result.txt'), 'r') as f:
+            result = f.read()
+    except:
         raise autograder.RejectSubmission(
-            'Evaluation is not yet implemented.',
+            'No results were generated.',
+            args, input, output,
+        )
+    passed = 'passed'
+    if result[:len(passed)] != passed:
+        raise autograder.RejectSubmission(
+            result,
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(submission)
+
+def evaluate_objects(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
+    # Test 1
+    args:List[str] = []
+    input = ''
+    output = autograder.run_java_gui_submission(
+        submission=submission,
+        args=args,
+        input=input,
+        sandbox=False,
+        member_variables_to_inject='''
+    int scrolled_x;
+    int scrolled_y;
+''',
+        update_code_to_inject = '''
+            if (this.ag_frame_count == 2) {
+                // Test that the screen was cleared, and click to change the current image
+                if (!this.ag_screen_cleared)
+                    this.ag_terminate("In View.paintComponent, the screen should be cleared with the background color each frame before images are drawn.");
+                AGSprite im = this.ag_find_sprite(0, 0);
+                if (im == null)
+                    this.ag_terminate("The currently selected image should be displayed in the top-left corner of the screen.");
+                ag_first_selected_image = im.image;
+
+                // Click to change the currently selected image
+                this.ag_click(5, 5, 1);
+            } else if (this.ag_frame_count == 4) {
+                // Test that the current image changed
+                AGSprite im = this.ag_find_sprite(0, 0);
+                if (im == null) {
+                    this.ag_terminate("After clicking in the region of the currenly selected image, no selected image was displayed there anymore. An image should always be displayed there.");
+                }
+                ag_second_selected_image = im.image;
+                if (ag_second_selected_image == ag_first_selected_image)
+                {
+                    this.ag_terminate("When the user clicks in the region of the currently selected image (in the top-left corner), it is supposed to change to the next image (and the former image should no longer be drawn).");
+                }
+            } else if (this.ag_frame_count == 6) {
+                // Place an item on the map
+                this.ag_click(500, 300, 1);
+            } else if (this.ag_frame_count == 8) {
+                // Test that an item was placed where the user clicked
+                ag_print_images();
+                if (this.ag_sprites.size() < 2)
+                {
+                    this.ag_terminate("Clicking on the map should add an item to the map. (After clicking, the selected item was still the only image being drawn.)");
+                }
+                AGSprite recently_placed_item = this.ag_find_sprite(500, 300);
+                if (recently_placed_item == null || recently_placed_item.image != ag_second_selected_image)
+                    this.ag_terminate("When the user clicks on the map, it should place an item of the currently selected image, and each image should only be loaded once.");
+                int target_x = 500 - recently_placed_item.image.getWidth(null) / 2;
+                int target_y = 300 - recently_placed_item.image.getHeight(null);
+                int sum_diff = Math.abs(target_x - recently_placed_item.x) + Math.abs(target_y - recently_placed_item.y);
+                if (sum_diff > 20)
+                {
+                    ag_print_images();
+                    this.ag_terminate("The image should be placed such that its bottom center is where the user clicked. Clicked at 500,300. Image width is " + Integer.toString(recently_placed_item.image.getWidth(null)) + ". Image height is " + Integer.toString(recently_placed_item.image.getHeight(null)) + ". Image drawn at " + Integer.toString(recently_placed_item.x) + "," + Integer.toString(recently_placed_item.y));
+                }
+            } else if (this.ag_frame_count == 10) {
+                // Start holding down the down arrow key
+                this.ag_press_key(KeyEvent.VK_DOWN, 'd');
+            } else if (this.ag_frame_count == 20) {
+                // Release the down arrow key
+                this.ag_release_key(KeyEvent.VK_DOWN, 'd');
+            } else if (this.ag_frame_count == 22) {
+                // Check that the item scrolled vertically
+                AGSprite scrolled_item = this.ag_find_sprite(500, Integer.MAX_VALUE);
+                scrolled_x = scrolled_item.bx();
+                scrolled_y = scrolled_item.by();
+                if (Math.abs(scrolled_x - 500) + 10 >= Math.abs(scrolled_y - 300))
+                    this.ag_terminate("I placed an item on the map then pressed the down arrow for a while. I expected the map to scroll vertically, but that did not happen.");
+            } else if (this.ag_frame_count == 24) {
+                // Click to place another item at (500,300)
+                this.ag_click(500, 300, 1);
+            } else if (this.ag_frame_count == 26) {
+                // Check that the new item was placed correctly
+                ag_print_images();
+                AGSprite placed_after_scroll = this.ag_find_sprite(500, 300);
+                if (Math.abs(placed_after_scroll.bx() - 500) + Math.abs(placed_after_scroll.by() - 300) > 10)
+                    this.ag_terminate("I scrolled vertically, then clicked to place an item on the map. But the item was not placed where I clicked!");
+            } else if (this.ag_frame_count == 28) {
+                // Right-click to remove the new item
+                ag_print_images();
+                this.ag_click(500, 300, 3);
+            } else if (this.ag_frame_count == 30) {
+                // Make sure the scrolled item is the only remaining item
+                ag_print_images();
+                AGSprite scrolled_item = this.ag_find_sprite(500, Integer.MAX_VALUE);
+                if (Math.abs(scrolled_item.bx() - scrolled_x) + Math.abs(scrolled_item.by() - scrolled_y) > 10)
+                    this.ag_terminate("When I right-clicked, it removed an item that was not the closest item to where I clicked!");
+            } else if (this.ag_frame_count >= 32 && this.ag_frame_count <= 38) {
+                // Right-click (more times than there are images)
+                this.ag_click(500, 300, 3);
+            } else if (this.ag_frame_count == 40) {
+                // Make sure there are no images remaining on the map
+                ag_print_images();
+                if (this.ag_sprites.size() > 1)
+                    this.ag_terminate("I right-clicked many times, but it did not remove all the images.");
+            } else if (this.ag_frame_count >= 42 && this.ag_frame_count < 48) {
+                // Place six new items
+                this.ag_click(10 * this.ag_frame_count, 300, 1);
+            } else if (this.ag_frame_count >= 52 && this.ag_frame_count < 57) {
+                // Remove five of them
+                this.ag_click(430, 300, 3);
+            } else if (this.ag_frame_count == 60) {
+                // Make sure the remaining item is the one at (470,300)
+                AGSprite remaining_item = this.ag_find_sprite(470, 300);
+                if (Math.abs(remaining_item.bx() - 470) + Math.abs(remaining_item.by() - 300) > 6) {
+                    ag_print_images();
+                    this.ag_terminate("I placed six items on the map in a horizontal pattern, from left to right. Then, I right-clicked five times where the second item was placed. I expected the right-most item to be the only one remaining. But a different item remained.");
+                }
+            } else if (this.ag_frame_count == 62) {
+                // Add an item at (400, 400)
+                this.ag_click(400, 400, 1);
+            } else if (this.ag_frame_count == 64) {
+                // Save the map
+                JButton save_button = this.ag_find_button(new String[]{"save", "write", "store", "backup", "record", "serialize", "marshal", "persist", "export", "to disk"});
+                if (save_button == null)
+                    this.ag_terminate("I could not find a button with the text 'save'");
+                ag_print_images();
+                save_button.push();
+            } else if (this.ag_frame_count == 66) {
+                // Add an item at (500, 500)
+                this.ag_click(500, 500, 1);
+            } else if (this.ag_frame_count == 68) {
+                // Remove the item at (400, 400)
+                this.ag_click(400, 400, 3);
+            } else if (this.ag_frame_count == 70) {
+                // Start holding down the down arrow key
+                this.ag_press_key(KeyEvent.VK_DOWN, 'd');
+            } else if (this.ag_frame_count == 76) {
+                // Release the down arrow key
+                this.ag_release_key(KeyEvent.VK_DOWN, 'd');
+            } else if (this.ag_frame_count == 78) {
+                // Load
+                JButton load_button = this.ag_find_button(new String[]{"load", "read", "retrieve", "restore", "deserialize", "unmarshal", "import", "from"});
+                if (load_button == null)
+                    this.ag_terminate("I could not find a button with the text 'load'");
+                load_button.push();
+            } else if (this.ag_frame_count == 80) {
+                // Make sure the images are where they were when we saved
+                ag_print_images();
+                AGSprite a = this.ag_find_sprite(470, Integer.MAX_VALUE);
+                if (Math.abs(a.bx() - 470) < 6 && Math.abs(a.by() - 300) > 6) {
+                    this.ag_print_images();
+                    this.ag_terminate("I saved, then scrolled, then loaded. I expected the scroll position to be restored to the way it was when I saved, but this did not happen.");
+                }
+                if (Math.abs(a.bx() - 470) + Math.abs(a.by() - 300) > 6) {
+                    this.ag_print_images();
+                    this.ag_terminate("An item that was present when I saved disappeared as soon as I loaded");
+                }
+                AGSprite b = this.ag_find_sprite(400, 400);
+                if (Math.abs(b.bx() - 400) + Math.abs(b.by() - 400) > 6) {
+                    this.ag_print_images();
+                    this.ag_terminate("I added an item, then saved, then deleted the item, then loaded. I expected that item to be restored, but it was not.");
+                }
+                AGSprite c = this.ag_find_sprite(500, 500);
+                if (Math.abs(c.bx() - 500) + Math.abs(c.by() - 500) <= 20) {
+                    this.ag_print_images();
+                    this.ag_terminate("I saved, then added an item, then loaded, and the new item was still there! Loading should have gotten rid of it.");
+                }
+            } else if (this.ag_frame_count >= 82 && this.ag_frame_count < 88) {
+                // Remove all items
+                this.ag_click(400, 400, 3);
+            } else if (this.ag_frame_count == 90) {
+                // Add an item in the middle
+                this.ag_click(300, 400, 1);
+            } else if (this.ag_frame_count == 92) {
+                // Add an item below
+                this.ag_click(300, 500, 1);
+            } else if (this.ag_frame_count == 94) {
+                // Add an item above
+                this.ag_click(300, 300, 1);
+            } else if (this.ag_frame_count == 96) {
+                // Check that the items are drawn in sorted order by y-value
+                AGSprite a = this.ag_find_sprite(300, 300);
+                AGSprite b = this.ag_find_sprite(300, 400);
+                AGSprite c = this.ag_find_sprite(300, 500);
+                int a_index = -1;
+                int b_index = -1;
+                int c_index = -1;
+                for (int i = 0; i < this.ag_sprites.size(); i++) {
+                    if (this.ag_sprites.get(i) == a)
+                        a_index = i;
+                    if (this.ag_sprites.get(i) == b)
+                        b_index = i;
+                    if (this.ag_sprites.get(i) == c)
+                        c_index = i;
+                }
+                if (a_index < 0 || b_index < 0 || c_index < 0)
+                    this.ag_terminate("An item disappeared after it was added to the map!");
+                if (b_index <= a_index || c_index <= b_index)
+                    this.ag_terminate("The items were not drawn in an order sorted by their y-value. Expected the items to be sorted by their y-value before drawing.");
+            } else if (this.ag_frame_count >= 100)
+                this.ag_terminate("passed");
+''',
+    )
+    basic_checks(args, input, output)
+    try:
+        with open(os.path.join(submission['folder'], 'ag_result.txt'), 'r') as f:
+            result = f.read()
+    except:
+        raise autograder.RejectSubmission(
+            'No results were generated.',
+            args, input, output,
+        )
+    passed = 'passed'
+    if result[:len(passed)] != passed:
+        raise autograder.RejectSubmission(
+            result,
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(submission)
+
+def evaluate_polymorphism(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
+    # Test 1
+    args:List[str] = []
+    input = ''
+    output = autograder.run_java_gui_submission(
+        submission=submission,
+        args=args,
+        input=input,
+        sandbox=False,
+        member_variables_to_inject='''
+    ArrayList<Double> ag_xs;
+    ArrayList<Double> ag_ys;
+    ArrayList<Double> ag_ws;
+    ArrayList<Double> ag_hs;
+    int type_a;
+    int type_b;
+    int type_c;
+    int type_d;
+
+    static double ag_deviation(ArrayList<Double> arr) {
+        double mean = 0.0;
+        for (int i = 0; i < arr.size(); i++) {
+            mean += arr.get(i).doubleValue();
+        }
+        mean /= arr.size();
+        double var = 0.0;
+        for (int i = 0; i < arr.size(); i++) {
+            var += (arr.get(i).doubleValue() - mean) * (arr.get(i).doubleValue() - mean);
+        }
+        return Math.sqrt(var);
+    }
+''',
+        initializers_to_inject='''
+            this.ag_xs = new ArrayList<Double>();
+            this.ag_ys = new ArrayList<Double>();
+            this.ag_ws = new ArrayList<Double>();
+            this.ag_hs = new ArrayList<Double>();
+            this.type_a = 0;
+            this.type_b = 0;
+            this.type_c = 0;
+            this.type_d = 0;
+''',
+        update_code_to_inject = '''
+            int frames_per_item = 200;
+            int step = this.ag_frame_count % frames_per_item;
+            if (step == 1) {
+                // Clear the arraylists
+                this.ag_xs.clear();
+                this.ag_ys.clear();
+                this.ag_ws.clear();
+                this.ag_hs.clear();
+
+                // Add the item
+                this.ag_click(300, 300, 1);
+            } else if (step > 1 && step < 198) {
+                // Measure image position and size
+                AGSprite item = this.ag_find_sprite(300, 300);
+                this.ag_xs.add(Double.valueOf(item.bx()));
+                this.ag_ys.add(Double.valueOf(item.by()));
+                this.ag_ws.add(Double.valueOf(item.w));
+                this.ag_hs.add(Double.valueOf(item.h));
+            } else if (step == 199) {
+                // Compute deviations
+                double xdev = ag_deviation(this.ag_xs);
+                double ydev = ag_deviation(this.ag_ys);
+                double wdev = ag_deviation(this.ag_ws);
+                double hdev = ag_deviation(this.ag_hs);
+
+                // Check results
+                AGSprite current = this.ag_find_sprite(5, 5);
+                int cur_wid = current.image.getWidth(null);
+                String name = "";
+                if (cur_wid == 120)
+                    name = "chair";
+                else if (cur_wid == 77)
+                    name = "lamp";
+                else if (cur_wid == 108)
+                    name = "mushroom";
+                else if (cur_wid == 164)
+                    name = "outhouse";
+                else if (cur_wid == 79)
+                    name = "pillar";
+                else if (cur_wid == 251)
+                    name = "pond";
+                else if (cur_wid == 147)
+                    name = "rock";
+                else if (cur_wid == 210)
+                    name = "statue";
+                else if (cur_wid == 242)
+                    name = "tree";
+                else if (cur_wid == 80)
+                    name = "turtle";
+                if (name.length() > 0) {
+                    if (name.equals("chair") ||
+                        name.equals("lamp") ||
+                        name.equals("pond") ||
+                        name.equals("rock") ||
+                        name.equals("tree")) {
+                        if (Math.abs(xdev) > 2 || Math.abs(ydev) > 2)
+                            this.ag_terminate("The " + name + " is not supposed to move");
+                        if (Math.abs(wdev) > 2 || Math.abs(hdev) > 2)
+                            this.ag_terminate("The " + name + " is not supposed to change size");
+                        this.type_a++;
+                    } else if(name.equals("pillar") || name.equals("statue")) {
+                        if (Math.abs(xdev) <= 2)
+                            this.ag_terminate("The " + name + " is supposed to strafe back and forth horizontally");
+                        if (Math.abs(ydev) > 2)
+                            this.ag_terminate("The " + name + " is not supposed to move vertically, just horizontally");
+                        if (Math.abs(wdev) > 2 || Math.abs(hdev) > 2)
+                            this.ag_terminate("The " + name + " is not supposed to change size");
+                        this.type_b++;
+                    } else if (name.equals("outhouse") || name.equals("turtle")) {
+                        if (Math.abs(xdev) > 2)
+                            this.ag_terminate("The " + name + " is not supposed to move horizontally. It is only supposed to jump vertically");
+                        if (Math.abs(ydev) <= 2)
+                            this.ag_terminate("The " + name + " is supposed to jump vertically at periodic intervals");
+                        if (Math.abs(wdev) > 2 || Math.abs(hdev) > 2)
+                            this.ag_terminate("The " + name + " is not supposed to change size");
+                        this.type_c++;
+                    } else if (name.equals("mushroom")) {
+                        if (Math.abs(xdev) > 5 || Math.abs(ydev) > 5)
+                            this.ag_terminate("The base (bottom-center) of the " + name + " is not supposed to move. The " + name + " is only supposed to change size");
+                        if (Math.abs(wdev) <= 2 || Math.abs(hdev) <= 2)
+                            this.ag_terminate("The mushroom is supposed to grow and shrink in an oscillating manner");
+                        this.type_d++;
+                    } else {
+                        this.ag_terminate("Internal error with autograder 3429723");
+                    }
+                }    
+
+                // Remove this item
+                this.ag_click(300, 300, 3);
+
+                // Change to next current item
+                this.ag_click(5, 5, 1);
+
+                if (this.type_a >= 4 && this.type_b >= 1 && this.type_c >= 1 && this.type_d >= 1)
+                    this.ag_terminate("passed");
+            } else if (this.ag_frame_count >= 10 * frames_per_item) {
+                this.ag_terminate("Some of the expected images are not appearing. There should be a chair, lamp, mushroom, outhouse, pillar, pond, rock, statue, tree, and turtle. Or, if you changed the images, that might throw off the autograder's ability to detect them. Are you using the images that came with the starter kit?");
+            }
+''',
+    )
+    basic_checks(args, input, output)
+    try:
+        with open(os.path.join(submission['folder'], 'ag_result.txt'), 'r') as f:
+            result = f.read()
+    except:
+        raise autograder.RejectSubmission(
+            'No results were generated.',
+            args, input, output,
+        )
+    passed = 'passed'
+    if result[:len(passed)] != passed:
+        raise autograder.RejectSubmission(
+            result,
             args, input, output,
         )
 
@@ -129,773 +575,42 @@ def evaluate_map_editor(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     return accept_submission(submission)
 
 def evaluate_debugging(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: not debug mode, exactly 8 items
-    args:List[str] = []
-    input = '''alpha
-beta
-charlie
-delta
-epsilon
-flag
-gum
-hair
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('debug mode') >= 0:
-        raise autograder.RejectSubmission(
-            'I did not pass in the "debug" flag, but it still ran in debug mode!',
-            args, input, output,
-        )
-    if output.find('delta') < 0:
-        raise autograder.RejectSubmission(
-            'The words in the lexicon were not displayed when not in debug mode.',
-            args, input, output,
-        )
-
-    # Test 2: debug mode, long list
-    args = ['debug']
-    input = '''alpha
-beta
-charlie
-delta
-epsilon
-frank
-george
-harry
-indigo
-jackson
-kappa
-llama
-money
-nubile
-oscar
-petrify
-quirky
-rascal
-sorry
-tricky
-'''
-    output = autograder.run_submission(submission, args, input)
-    if output.find('debug mode') < 0:
-        raise autograder.RejectSubmission(
-            'When I passed in the "debug" flag, it did not print that it was running in debug mode. (See step 2.j)',
-            args, input, output,
-        )
-    if output.find('delta') < 0:
-        raise autograder.RejectSubmission(
-            'The words in the lexicon were not displayed when in debug mode.',
-            args, input, output,
-        )
-    if output.find('rascal') >= 0:
-        raise autograder.RejectSubmission(
-            'I was able to enter more than 8 words into the lexicon. (See step 5.a)',
-            args, input, output,
-        )
-
-    # Test 3: superfluous argument
-    args = ['debug', 'salmon']
-    input = '''alpha
-beta
-charlie
-delta
-epsilon
-frank
-george
-harry
-indigo
-jackson
-kappa
-llama
-money
-nubile
-oscar
-petrify
-quirky
-rascal
-sorry
-tricky
-'''
-    output = autograder.run_submission(submission, args, input)
-    if output.find('delta') >= 0:
-        raise autograder.RejectSubmission(
-            'When I passed in a superfluous argument, it did not crash. (See step 2.j)',
-            args, input, output,
-        )
-
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_stacks(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: Make sure the name was changed and it prints words entered so far
-    args:List[str] = []
-    input = '''1
-alpha
-beta
-gamma
-
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('Aloysius') >= 0:
-        raise autograder.RejectSubmission(
-            'You were supposed to change the name. See step 2.b.',
-            args, input, output,
-        )
-    if output.find('beta') < 0:
-        raise autograder.RejectSubmission(
-            'When the "quiet" flag is not used, you are supposed to print the words that have been entered so far.',
-            args, input, output,
-        )
-
-    # Test 2: Make sure the quiet flag works
-    args = ['quiet']
-    input = '''1
-alpha
-beta
-gamma
-
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    if output.find('beta') >= 0:
-        raise autograder.RejectSubmission(
-            'When the "quiet" flag is used, you are not supposed to print the words that have been entered so far.',
-            args, input, output,
-        )
-
-    # Test 3: Make sure it can handle a lot of words and the tear-down works
-    args = ['quiet']
-    input = '''1
-alligator
-babboon
-cat
-dog
-elephant
-frog
-giraffe
-human
-iguana
-jackal
-kangaroo
-llama
-monkey
-narwhal
-ostrich
-pig
-
-2
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    narwhal_spot = output.rfind('narwhal')
-    elephant_spot = output.rfind('elephant')
-    if narwhal_spot < 0 or elephant_spot < 0:
-        raise autograder.RejectSubmission(
-            'Expected the tear-down to print the lexicon in reverse order. But at least some of the animals I pushed on the stack were not printed!',
-            args, input, output,
-        )
-    if elephant_spot < narwhal_spot:
-        raise autograder.RejectSubmission(
-            'The list was not correctly reversed.',
-            args, input, output,
-        )
-
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_flood_fill(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: See if it produces the exactly correct output
-    args = ['quiet']
-    input = '''3
-#########
-#   #   #
-#   #   #
-#   #   #
-#########
-
-5
-2
-2
-/
-100
-4
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('#///#   #') < 0:
-        raise autograder.RejectSubmission(
-            'Flood fill did not work correctly. It should have filled the left-side box with slashes, but left the right-side box empty.',
-            args, input, output,
-        )
-
-    # Test 1: See if it produces the exactly correct output
-    args = ['quiet']
-    input = '''3
-###### ######
-#   #   #   #
-#       #   #
-#   #   #  ##
-## ##########
-
-5
-2
-2
-x
-100
-4
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('#xxx#xxx#   #') < 0:
-        raise autograder.RejectSubmission(
-            'Flood fill did not work correctly. It should have filled the left two regions with "x"s, but left the right-most region empty.',
-            args, input, output,
-        )
-
+def evaluate_ajax(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_boggle(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: Test Boggle output
-    args = ['quiet']
-    input = '''3
-ijkl
-mnop
-qrst
-uvwx
-
-1
-aaaaaaaa
-in
-ink
-inkpot
-inkpots
-inro
-ins
-jin
-jink
-jins
-jo
-jot
-jots
-knop
-knops
-knosp
-knot
-knots
-kop
-kops
-kor
-kors
-kos
-lo
-lop
-lops
-lorn
-lost
-lot
-lots
-mi
-mink
-minor
-minors
-nim
-no
-nor
-norm
-nos
-not
-on
-ons
-op
-ops
-opt
-opts
-or
-ors
-os
-plonk
-plot
-plots
-pol
-pons
-poop
-post
-pot
-pots
-rot
-rots
-salad
-salmon
-six
-snot
-so
-sol
-son
-sop
-sorn
-sot
-spot
-stop
-storm
-taco
-to
-ton
-tons
-top
-tops
-tor
-torn
-tors
-tot
-urn
-urns
-wrist
-
-6
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('aaaaaaaa') >= 0:
-        raise autograder.RejectSubmission(
-            f'When the "quiet" flag is used, you are not supposed to print all the words in your lexicon.',
-            args, input, output,
-        )
-    for word in ['in', 'ink', 'inkpots', 'inro', 'jink',
-                 'knops', 'knots', 'lost', 'minors',
-                 'plonk', 'storm', 'urns']:
-        if output.find(word) < 0:
-            raise autograder.RejectSubmission(
-                f'Failed to find the word "{word}".',
-                args, input, output,
-            )
-    for word in ['poop', 'tot']:
-        if output.find(word) >= 0:
-            raise autograder.RejectSubmission(
-                f'It looks like your implementation does not prevent letters from being used multiple times. For example, your implementation reported the invalid word "{word}".',
-                args, input, output,
-            )
-    for word in ['salad', 'salmon', 'taco', 'wrist', 'six']:
-        if output.find(word) >= 0:
-            raise autograder.RejectSubmission(
-                f'Found the invalid word "{word}". (Make sure you are not printing all the words in your lexicon. That will cause the autograder to think you are finding them in the CharMatrix.)',
-                args, input, output,
-            )
-    if output.find('porn') >= 0:
-        raise autograder.RejectSubmission(
-            f'Found the word "porn", which was not even in the lexicon!',
-            args, input, output,
-        )
-
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_linked_lists(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: See if the unit test passes
-    args = ['quiet']
-    input = '''7
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('passed') < 0 and output.find('Passed') < 0:
-        raise autograder.RejectSubmission(
-            'The unit test did not pass. (Did not find the string "passed" in the output.)',
-            args, input, output,
-        )
-
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_merge_sort(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: Sort a very small list
-    args = ['quiet']
-    input = '''1
-monkey
-1 salad
-alligator
-11 pizza
-zebra
-8 cheese
-
-8
-2
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    words_in_order = ['zebra', 'monkey', 'alligator', 'pizza', 'cheese', 'salad']
-    prev = -1
-    for i in range(len(words_in_order)):
-        pos = output.rfind(words_in_order[i])
-        if pos < 0:
-            raise autograder.RejectSubmission(
-                f'Expected to find the word {words_in_order[i]} in the output.',
-                args, input, output,
-            )
-        elif pos <= prev:
-            raise autograder.RejectSubmission(
-                f'The sorted order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
-                args, input, output,
-            )
-        prev = pos
-    comp = 'comparisons:'    
-    comp_pos = output.find(comp)
-    if comp_pos < 0:
-        raise autograder.RejectSubmission(
-            f'Did not find the string "comparisons: " in your output. See step 2.d.',
-            args, input, output,
-        )
-    comp_pos += len(comp)
-    try:
-        comp_val = next_num(output[comp_pos:])
-    except ValueError:
-        raise autograder.RejectSubmission(
-            f'Expected a number after "{comp}"',
-            args, input, output,
-        )
-    if comp_val <= 6 or comp_val >= 16:
-        raise autograder.RejectSubmission(
-            f'The number of comparisons performed ({comp_val}) is not consistent with mergesort. Are you counting comparisons correctly?',
-            args, input, output,
-        )
-
-    # Test 2: Sort a bigger list
-    args = ['quiet']
-    input = '1\n' + ('xyz\n' * 1024) + '\n8\n0\n'
-    output = autograder.run_submission(submission, args, input)
-    comp = 'comparisons:'
-    comp_pos = output.find(comp)
-    if comp_pos < 0:
-        raise autograder.RejectSubmission(
-            f'Did not find the string "comparisons: " in your output. See step 2.d.',
-            args, input, output,
-        )
-    try:
-        comp_val = next_num(output[comp_pos:])
-    except ValueError:
-        raise autograder.RejectSubmission(
-            f'Expected a number after {comp}',
-            args, input, output,
-        )
-    if comp_val <= 5118 or comp_val >= 10241:
-        raise autograder.RejectSubmission(
-            f'The number of comparisons performed is not consistent with mergesort. Are you counting comparisons correctly?',
-            args, input, output,
-        )
-
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_binary_search(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: See if it produces the exactly correct output
-    args = ['quiet']
-    input = '''9
-/var/www/autograder/test_data/db.csv
-10
-0
-dog
-fish
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    fish_index = output.find('fish')
-    if fish_index >= 0:
-        raise autograder.RejectSubmission(
-            'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
-        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-    carrot_index = output.find('carrot')
-    if carrot_index >= 0:
-        raise autograder.RejectSubmission(
-            'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
-        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-    brown_index = output.find('brown')
-    if brown_index < 0:
-        raise autograder.RejectSubmission(
-            'Expected the row with doughnut to appear in the output',
-        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-    white_index = output.find('white')
-    if white_index < 0:
-        raise autograder.RejectSubmission(
-            'Expected the row with eggs to appear in the output',
-        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-    if white_index < brown_index:
-        raise autograder.RejectSubmission(
-            'Expected the doughnut row to come before the eggs row',
-        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-
-    # Test 1: See if it produces the exactly correct output
-    args = ['quiet']
-    input = '''9
-/var/www/autograder/test_data/db.csv
-10
-2
-0
-4
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    eggs_pos = output.find('eggs')
-    if eggs_pos >= 0:
-        raise autograder.RejectSubmission(
-            'Did not expect the eggs row to be in the output.',
-            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-    eggs_pos = output.find('doughnut')
-    if eggs_pos >= 0:
-        raise autograder.RejectSubmission(
-            'Did not expect the doughnut row to be in the output. Did you use smart_compare for all comparisons?',
-            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-    carrot_pos = output.find('carrot')
-    if carrot_pos < 0:
-        raise autograder.RejectSubmission(
-            'Expected the carrot row to be in the output.',
-            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-    fish_pos = output.find('fish')
-    if fish_pos < 0:
-        raise autograder.RejectSubmission(
-            'Expected the fish row to be in the output.',
-            args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
-        )
-
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_memory(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: Measure baseline values for the number of instantiations and deletions
-    args = ['quiet']
-    input = '''11
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)    
-    inst_pos = output.find('instantiated:')
-    if inst_pos < 0:
-        raise autograder.RejectSubmission(
-            'Expected the string "instantiated:" to occur in the output',
-            args, input, output,
-        )
-    try:
-        baseline_inst_val = next_num(output[inst_pos:])
-    except ValueError:
-        raise autograder.RejectSubmission(
-            'Expected a number after "instantiated:"',
-            args, input, output,
-        )
-    dele_pos = output.find('deleted:')
-    if dele_pos < 0:
-        raise autograder.RejectSubmission(
-            'Expected the string "deleted:" to occur in the output',
-            args, input, output,
-        )
-    try:
-        baseline_dele_val = next_num(output[dele_pos:])
-    except ValueError:
-        raise autograder.RejectSubmission(
-            'Expected a number after "deleted:"',
-            args, input, output,
-        )
-    if baseline_inst_val >= 7:
-        raise autograder.RejectSubmission(
-            'I did not even do anything. How many global objects do you have?',
-            args, input, output,
-        )
-    if baseline_dele_val > baseline_inst_val:
-        raise autograder.RejectSubmission(
-            'How do you have more deletions than instantiations?',
-            args, input, output,
-        )
-
-    # Test 2: See if the gap is the same
-    args = ['quiet']
-    input = '''1
-apple
-1 zither
-cheese
-22 xylophone
-banana
-3 didgeridoo
-
-3
-appl
-ehse
-cesb
-anaa
-
-4
-6
-7
-8
-9
-/var/www/autograder/test_data/db.csv
-10
-2
-0
-4
-11
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)    
-    inst_pos = output.find('instantiated:')
-    if inst_pos < 0:
-        raise autograder.RejectSubmission(
-            'Expected the string "instantiated:" to occur in the output',
-            args, input, output,
-        )
-    try:
-        inst_val = next_num(output[inst_pos:])
-    except ValueError:
-        raise autograder.RejectSubmission(
-            'Expected a number after "instantiated:"',
-            args, input, output,
-        )
-    dele_pos = output.find('deleted:')
-    if dele_pos < 0:
-        raise autograder.RejectSubmission(
-            'Expected the string "deleted:" to occur in the output',
-            args, input, output,
-        )
-    try:
-        dele_val = next_num(output[dele_pos:])
-    except ValueError:
-        raise autograder.RejectSubmission(
-            'Expected a number after "deleted:"',
-            args, input, output,
-        )
-    if inst_val < 7:
-        raise autograder.RejectSubmission(
-            'The total number of instantiations is too small. It looks like you are not counting instantiations properly.',
-            args, input, output,
-        )
-    if dele_val > inst_val:
-        raise autograder.RejectSubmission(
-            'The total number of deletions should not be larger than the number of instantiations. (This often means you are passing objects by value that lack a copy constructor.)',
-            args, input, output,
-        )
-
-    if inst_val - dele_val != baseline_inst_val - baseline_dele_val and inst_val - dele_val > 2:
-        raise autograder.RejectSubmission(
-            'The gap between instantiations and deletions changed when more code was run. This suggests you probably have memory leaks that are not just due to global variables.',
-            args, input, output,
-        )
-
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_hash_tables(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
+    # Accept the submission
+    return accept_submission(submission)
 
-    # Test 1: See if it produces the exactly correct output
-    args = ['quiet']
-    input = '''12
-taco
-acotay
-12
-rice
-iceray
-12
-pineapple
-ineapplepay
-13
-taco
-13
-pineapple
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('iceray') >= 0:
-        raise autograder.RejectSubmission(
-            'Did not expect to find "iceray" in the output. I did not query for "rice"!',
-            args, input, output,
-        )
-    if output.find('ineapplepay') < 0:
-        raise autograder.RejectSubmission(
-            'Expected to find "ineapplepay" in the output.',
-            args, input, output,
-        )
-    if output.find('acotay') < 0:
-        raise autograder.RejectSubmission(
-            'Expected to find "acotay" in the output.',
-            args, input, output,
-        )
-
+def evaluate_memory(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_heaps(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: See if it produces the exactly correct output
-    args = ['quiet']
-    input = '''14
-salmon
-14
-money
-14
-tarantula
-14
-banana
-14
-zebra
-14
-antelope
-15
-15
-15
-15
-15
-15
-0
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    words_in_order = ['antelope', 'banana', 'money', 'salmon', 'tarantula', 'zebra']
-    prev = -1
-    for i in range(len(words_in_order)):
-        pos = output.rfind(words_in_order[i])
-        if pos < 0:
-            raise autograder.RejectSubmission(
-                f'Expected to find the word {words_in_order[i]} in the output.',
-                args, input, output,
-            )
-        elif pos <= prev:
-            raise autograder.RejectSubmission(
-                f'The order was wrong. {words_in_order[i]} should have come after {words_in_order[i - 1]}.',
-                args, input, output,
-            )
-        prev = pos
-
     # Accept the submission
     return accept_submission(submission)
 
@@ -905,31 +620,24 @@ course_desc:Mapping[str,Any] = {
     'projects': {
         'map_editor': {
             'title': 'Project 1 - Map Editor',
-            'due_time': datetime(year=2024, month=9, day=2, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=8, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_map_editor,
         },
-        'debugging': {
-            'title': 'Project 2 - Debugging',
-            'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
+        'objects': {
+            'title': 'Project 2 - Objects',
+            'due_time': datetime(year=2024, month=9, day=10, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_debugging,
+            'evaluator': evaluate_objects,
         },
-        'stacks': {
-            'title': 'Project 3 - Dynamic Array',
-            'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
+        'polymorphism': {
+            'title': 'Project 3 - Polymorphism',
+            'due_time': datetime(year=2024, month=9, day=17, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_stacks,
-        },
-        'flood_fill': {
-            'title': 'Project 4 - Flood Fill',
-            'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_flood_fill,
+            'evaluator': evaluate_polymorphism,
         },
         'midterm1': {
             'title': 'Midterm 1',
@@ -937,8 +645,15 @@ course_desc:Mapping[str,Any] = {
             'weight': 18,
             'points': 86,
         },
+        'ajax': {
+            'title': 'Project 4 - AJAX',
+            'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 4,
+            'evaluator': evaluate_ajax,
+        },
         'boggle': {
-            'title': 'Project  - Boggle',
+            'title': 'Project 5 - Boggle',
             'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,

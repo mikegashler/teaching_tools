@@ -7,3 +7,4 @@ set -e
 # rm -rf front_end/pf2
 # scp -r * mgashler@jacquard.ddns.uark.edu:/var/www/autograder/
 scp back_end/*.py mgashler@jacquard.ddns.uark.edu:/var/www/autograder/back_end/
+scp -r back_end/java_gui_checker mgashler@jacquard.ddns.uark.edu:/var/www/autograder/back_end/

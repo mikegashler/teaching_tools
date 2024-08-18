@@ -10,7 +10,11 @@ import java.awt.FontMetrics;
 
 class Graphics
 {
-    void clearRect(int x, int y, int width, int height) {}
+    void clearRect(int x, int y, int width, int height)
+    {
+        Controller.ag_controller.ag_screen_cleared = true;
+    }
+
     void clipRect(int x, int y, int width, int height) {}
     void copyArea(int x, int y, int width, int height, int dx, int dy) {}
     Graphics create() { return null; }
@@ -20,12 +24,39 @@ class Graphics
     void drawArc(int x, int y, int width, int height, int startAngle, int arcAngle) {}
     void drawBytes(byte[] data, int offset, int length, int x, int y) {}
     void drawChars(char[] data, int offset, int length, int x, int y) {}
-    boolean drawImage(Image img, int x, int y, Color bgcolor, ImageObserver observer) { return true; }
-    boolean drawImage(Image img, int x, int y, ImageObserver observer) { return true; }
-    boolean drawImage(Image img, int x, int y, int width, int height, Color bgcolor, ImageObserver observer) { return true; }
-    boolean drawImage(Image img, int x, int y, int width, int height, ImageObserver observer) { return true; }
-    boolean drawImage(Image img, int dx1, int dy1, int dx2, int dy2, int sx1, int sy1, int sx2, int sy2, Color bgcolor, ImageObserver observer) { return true; }
-    boolean drawImage(Image img, int dx1, int dy1, int dx2, int dy2, int sx1, int sy1, int sx2, int sy2, ImageObserver observer) { return true; }
+
+    boolean drawImage(Image img, int x, int y, ImageObserver observer)
+    {
+        Controller.ag_controller.ag_add_sprite(img, x, y, img.getWidth(observer), img.getHeight(observer));
+        return true;
+    }
+
+    boolean drawImage(Image img, int x, int y, Color bgcolor, ImageObserver observer)
+    {
+        return this.drawImage(img, x, y, observer);
+    }
+
+    boolean drawImage(Image img, int x, int y, int width, int height, ImageObserver observer)
+    {
+        Controller.ag_controller.ag_add_sprite(img, x, y, width, height);
+        return true;
+    }
+
+    boolean drawImage(Image img, int x, int y, int width, int height, Color bgcolor, ImageObserver observer)
+    {
+        return this.drawImage(img, x, y, width, height, observer);
+    }
+
+    boolean drawImage(Image img, int dx1, int dy1, int dx2, int dy2, int sx1, int sy1, int sx2, int sy2, Color bgcolor, ImageObserver observer)
+    {
+        return this.drawImage(img, dx1, dy1, dx2 - dx1, dy2 - dy1, observer);
+    }
+
+    boolean drawImage(Image img, int dx1, int dy1, int dx2, int dy2, int sx1, int sy1, int sx2, int sy2, ImageObserver observer)
+    {
+        return this.drawImage(img, dx1, dy1, dx2 - dx1, dy2 - dy1, observer);
+    }
+
     void drawLine(int x1, int y1, int x2, int y2) {}
     void drawOval(int x, int y, int width, int height) {}
     void drawPolygon(int[] xPoints, int[] yPoints, int nPoints) {}
@@ -40,7 +71,11 @@ class Graphics
     void fillOval(int x, int y, int width, int height) {}
     void fillPolygon(int[] xPoints, int[] yPoints, int nPoints) {}
     void fillPolygon(Polygon p) {}
-    void fillRect(int x, int y, int width, int height) {}
+    void fillRect(int x, int y, int width, int height)
+    {
+        Controller.ag_controller.ag_screen_cleared = true;
+    }
+
     void fillRoundRect(int x, int y, int width, int height, int arcWidth, int arcHeight) {}
     Shape getClip() { return null; }
     Rectangle getClipBounds() { return null; }

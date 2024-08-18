@@ -60,7 +60,7 @@ exit 0
 
 launch_java = '''#!/bin/bash
 set -e
-javac *.java
+javac -Xlint:deprecation *.java
 java Main $* < _stdin.txt
 find . -name "*.class" -exec rm -rf {} \;
 exit 0
@@ -111,10 +111,167 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
 def infect_controller(
     file_string:str,
     imports_to_inject:str,
+    classes_to_inject:str,
     member_variables_to_inject:str,
     initializers_to_inject:str,
     update_code_to_inject:str,
 ) -> str:
+    # Add some boiler plate code
+    imports_to_inject += '''
+import java.util.ArrayList;
+import java.awt.Image;
+import java.io.PrintWriter;
+import java.awt.Component;
+'''
+    classes_to_inject += '''
+class AGSprite
+{
+    Image image;
+    int x;
+    int y;
+    int w;
+    int h;
+
+    public AGSprite(Image image, int x, int y, int w, int h)
+    {
+        this.image = image;
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+    }
+
+    // Returns the x value of the base point
+    int bx() {
+        return this.x + this.w / 2;
+    }
+
+    // Returns the y value of the base point
+    int by() {
+        return this.y + this.h;
+    }
+}
+'''
+    member_variables_to_inject += '''
+    static Controller ag_controller = null;
+    int ag_frame_count;
+    boolean ag_screen_cleared;
+    ArrayList<AGSprite> ag_sprites;
+    Image ag_first_selected_image;
+    Image ag_second_selected_image;
+    Image ag_third_selected_image;
+
+    void ag_add_sprite(Image image, int x, int y, int w, int h)
+    {
+        this.ag_sprites.add(new AGSprite(image, x, y, w, h));
+    }
+
+    // Returns the first button in the list of components in the view that contains
+    // any of the specified strings in its text
+    JButton ag_find_button(String[] strings)
+    {
+        for (int i = 0; i < this.view.components.size(); i++) {
+            Component comp = this.view.components.get(i);
+            for (int j = 0; j < strings.length; j++) {
+                if (comp instanceof JButton) {
+                    if (((JButton)comp).getText().toLowerCase().contains(strings[j].toLowerCase()))
+                        return (JButton)comp;
+                }
+            }
+        }
+        return null;
+    }
+
+    // Returns the sprite with a bottom-middle closest to the specified coordinates (or null if there are none)
+    // If x or y is Integer.MAX_VALUE, then it will be ignored.
+    AGSprite ag_find_sprite(int x, int y)
+    {
+        double best_dist = Double.MAX_VALUE;
+        AGSprite best_image = null;
+        for (int i = 0; i < this.ag_sprites.size(); i++)
+        {
+            AGSprite im = this.ag_sprites.get(i);
+            int imx = im.bx();
+            int imy = im.by();
+            int xx = x;
+            int yy = y;
+            if (xx == Integer.MAX_VALUE)
+                xx = imx;
+            if (yy == Integer.MAX_VALUE)
+                yy = imy;
+            double sq_dist = (imy - yy) * (imy - yy) + (imx - xx) * (imx - xx);
+            if (sq_dist < best_dist)
+            {
+                best_dist = sq_dist;
+                best_image = im;
+            }
+        }
+        if (best_image != null)
+            System.out.println("[autograder] Searched for image near (" + (x == Integer.MAX_VALUE ? "?" : Integer.toString(x)) + "," + (y == Integer.MAX_VALUE ? "?" : Integer.toString(y)) + "). Found sprite at (" + Integer.toString(best_image.bx()) + ", " + Integer.toString(best_image.by()) + ") on frame " + Integer.toString(this.ag_frame_count));
+        return best_image;
+    }
+
+    void ag_terminate(String result)
+    {
+        try {
+            PrintWriter writer = new PrintWriter("ag_result.txt", "UTF-8");
+            writer.println(result);
+            writer.close();
+        } catch (Exception e) {
+            System.out.print("An exception was thrown: " + e.toString());
+        }
+        System.exit(0);
+    }
+
+    void ag_click(int x, int y, int button)
+    {
+        System.out.println("[autograder] Clicked mouse button " + Integer.toString(button) + " at " + Integer.toString(x) + ", " + Integer.toString(y) + " on frame " + Integer.toString(this.ag_frame_count));
+        MouseEvent event = new MouseEvent(JPanel.click_me, 0, 0, 0, x, y, 0, false, button);
+        this.mouseClicked(event);
+        this.mousePressed(event);
+        this.mouseReleased(event);
+    }
+
+    void ag_press_key(int key, char keychar)
+    {
+        System.out.println("[autograder] Pressed key " + Integer.toString(key) + " on frame " + Integer.toString(this.ag_frame_count));
+        KeyEvent event = new KeyEvent(JPanel.click_me, 0, 0, 0, key, keychar);
+        this.keyPressed(event);
+    }
+
+    void ag_release_key(int key, char keychar)
+    {
+        System.out.println("[autograder] Released key " + Integer.toString(key) + " on frame " + Integer.toString(this.ag_frame_count));
+        KeyEvent event = new KeyEvent(JPanel.click_me, 0, 0, 0, key, keychar);
+        this.keyReleased(event);
+    }
+
+    // Print all the images
+    void ag_print_images()
+    {
+        System.out.println("[autograder] images on screen at frame count " + Integer.toString(this.ag_frame_count));
+        for (int i = 0; i < this.ag_sprites.size(); i++)
+        {
+            AGSprite sprite = this.ag_sprites.get(i);
+            System.out.println("[autograder]    " + Integer.toString(i) + ": botmid=(" + Integer.toString(sprite.bx()) + "," + Integer.toString(sprite.by()) + "), topleft=(" + Integer.toString(sprite.x) + ", " + Integer.toString(sprite.y) + "), src_widhgt=(" + Integer.toString(sprite.image.getWidth(null)) + "," + Integer.toString(sprite.image.getHeight(null)) + "), dst_widhgt=(" + Integer.toString(sprite.w) + "," + Integer.toString(sprite.h) + ")");
+        }
+    }
+
+'''
+    initializers_to_inject += '''
+        Controller.ag_controller = this;
+        this.ag_frame_count = 0;
+        ag_screen_cleared = false;
+        this.ag_sprites = new ArrayList<AGSprite>();
+'''
+    update_code_to_inject += '''
+
+            // Reset stuff
+            this.ag_frame_count++;
+            this.ag_screen_cleared = false;
+            this.ag_sprites.clear();
+'''
+
     # Find the spots in Controller.java where we can inject our code
     class_controller_pos = file_string.find('class Controller')
     if class_controller_pos < 0:
@@ -140,9 +297,9 @@ def infect_controller(
     constructor_start_pos += 1
     update_start_pos += 1
     if update_start_pos > constructor_start_pos:
-        file_string = imports_to_inject + file_string[:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:]
+        file_string = imports_to_inject + file_string[:class_controller_pos] + classes_to_inject + file_string[class_controller_pos:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:]
     else:
-        file_string = imports_to_inject + file_string[:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:]
+        file_string = imports_to_inject + file_string[:class_controller_pos] + classes_to_inject + file_string[class_controller_pos:class_start_pos] + member_variables_to_inject + file_string[class_start_pos:update_start_pos] + update_code_to_inject + file_string[update_start_pos:constructor_start_pos] + initializers_to_inject + file_string[constructor_start_pos:]
     return file_string
 
 # A special-purpose version of run_submission for Java programs in Programming Paradigms
@@ -153,6 +310,7 @@ def run_java_gui_submission(
     input:str='',
     sandbox:bool=True,
     imports_to_inject:str='',
+    classes_to_inject:str='',
     member_variables_to_inject:str='',
     initializers_to_inject:str='',
     update_code_to_inject:str='',
@@ -174,6 +332,7 @@ def run_java_gui_submission(
                     file_string = file_string.replace('import java.awt.Graphics2D;', '//import java.awt.Graphics2D;')
                     file_string = file_string.replace('import java.awt.Graphics;', '//import java.awt.Graphics;')
                     file_string = file_string.replace('import java.awt.Toolkit;', '//import java.awt.Toolkit;')
+                    file_string = file_string.replace('import javax.swing.JButton;', '//import javax.swing.JButton;')
                 with open(full_path, 'w') as f2:
                     f2.write(file_string)
                 print(f'rewrote {full_path}')
@@ -196,7 +355,7 @@ def run_java_gui_submission(
     # Infect Controller.java with checking code
     with open(controller_hack_me, 'r') as f:
         file_string = f.read()
-    file_string = infect_controller(file_string, imports_to_inject, member_variables_to_inject, initializers_to_inject, update_code_to_inject)
+    file_string = infect_controller(file_string, imports_to_inject, classes_to_inject, member_variables_to_inject, initializers_to_inject, update_code_to_inject)
     with open(controller_build_me, 'w') as f2:
         f2.write(file_string)
 
@@ -1096,8 +1255,8 @@ def receive_submission(
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         p:List[str] = []
-        p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
-        p.append(f'{str(e)}<br><br>')
+        p.append('Sorry, there was a problem with this submission:<br><br>')
+        p.append(f'<font color="red">{str(e)}</font><br><br>')
         p.append('Please fix the issue and resubmit.')
         return {
             'succeeded': False,
@@ -1251,13 +1410,14 @@ def eval_thread(
         the_job.results = eval_func(submission)
     except RejectSubmission as rejection:
         p:List[str] = []
-        p.append('<font color="red">Sorry, there was a problem with this submission:</font><br><br>')
-        p.append(f'{str(rejection)}<br><br>')
+        p.append('Sorry, there was a problem with this submission:<br><br>')
+        p.append(f'<font color="red">{str(rejection)}</font><br><br>')
         if len(rejection._args) > 0:
             p.append(f'Args passed in: <pre class="code">{" ".join(rejection._args)}</pre><br><br>')
         if len(rejection.input) > 0:
             p.append(f'Input fed in: <pre class="code">{rejection.input}</pre><br><br>')
-        p.append(f'Output: <pre class="code">{rejection.output}</pre><br><br>')
+        if len(rejection.output) > 0:
+            p.append(f'Output: <pre class="code">{rejection.output}</pre><br><br>')
         p.append(rejection.extra)
         p.append('Please fix the issue and resubmit.')
         the_job.results = {

@@ -11,6 +11,7 @@ class JFrame
     String title;
     int width;
     int height;
+    JPanel panel;
 
     public void setName(String s)
     {
@@ -41,14 +42,22 @@ class JFrame
 
     public static class Container
     {
+        JFrame frame;
+
+        Container(JFrame frame)
+        {
+            this.frame = frame;
+        }
+
         public void add(JPanel panel)
         {
+            this.frame.panel = panel;
         }
     };
 
     public Container getContentPane()
     {
-        return new Container();
+        return new Container(this);
     }
 
     public void setDefaultCloseOperation(int operation)
