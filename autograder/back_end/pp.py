@@ -574,43 +574,7 @@ def evaluate_polymorphism(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_debugging(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_stacks(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
 def evaluate_ajax(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_boggle(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_linked_lists(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_merge_sort(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_binary_search(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_hash_tables(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_memory(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    # Accept the submission
-    return accept_submission(submission)
-
-def evaluate_heaps(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Accept the submission
     return accept_submission(submission)
 
@@ -641,81 +605,26 @@ course_desc:Mapping[str,Any] = {
         },
         'midterm1': {
             'title': 'Midterm 1',
-            'due_time': datetime(year=2024, month=2, day=26, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=9, day=26, hour=23, minute=59, second=59),
             'weight': 18,
             'points': 86,
         },
         'ajax': {
             'title': 'Project 4 - AJAX',
-            'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=10, day=3, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_ajax,
         },
-        'boggle': {
-            'title': 'Project 5 - Boggle',
-            'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_boggle,
-        },
-        'linked_lists': {
-            'title': 'Project 6 - Linked Lists',
-            'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_linked_lists,
-        },
-        'merge_sort': {
-            'title': 'Project 7 - Merge Sort',
-            'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_merge_sort,
-        },
         'midterm2': {
             'title': 'Midterm 2',
-            'due_time': datetime(year=2024, month=4, day=1, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=10, day=31, hour=23, minute=59, second=59),
             'weight': 18,
             'points': 67,
         },
-        'binary_search': {
-            'title': 'Project 8 - Database',
-            'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_binary_search,
-        },
-        'memory': {
-            'title': 'Project 9 - Memory Management',
-            'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_memory,
-        },
-        'heaps': {
-            'title': 'Project 10 - Priority Queue',
-            'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_heaps,
-        },
-        'hash_tables': {
-            'title': 'Project 11 - Hash Table',
-            'due_time': datetime(year=2024, month=5, day=2, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_hash_tables,
-        },
-        'lab': {
-            'title': 'Lab participation',
-            'due_time': datetime(year=2024, month=5, day=2, hour=23, minute=59, second=59),
-            'weight': 4,
-            'points': 4,
-        },
         'final': {
             'title': 'Final exam',
-            'due_time': datetime(year=2024, month=5, day=8, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=12, day=10, hour=23, minute=59, second=59),
             'weight': 20,
             'points': 85,
         },

@@ -19,8 +19,8 @@ import pp
 
 # The list of courses this server currently services
 active_courses = [
-    pf2,
-    dsa,
+#    pf2,
+#    dsa,
     pp,
 ]
 
@@ -66,10 +66,10 @@ page_makers:Dict[str,Callable[[Mapping[str,Any],Session],Mapping[str,Any]]] = {
     # 'redirect.html': banana_quest.make_redirect_page,
     'log_out.html': autograder.make_log_out_page,
     'get_results.html': autograder.get_results,
-    'pf2_view_scores.html': pf2.view_scores_page,
-    'pf2_admin.html': pf2.admin_page,
-    'dsa_view_scores.html': dsa.view_scores_page,
-    'dsa_admin.html': dsa.admin_page,
+    # 'pf2_view_scores.html': pf2.view_scores_page,
+    # 'pf2_admin.html': pf2.admin_page,
+    # 'dsa_view_scores.html': dsa.view_scores_page,
+    # 'dsa_admin.html': dsa.admin_page,
 }
 
 def make_page(response:Response, url:str, params: Mapping[str, Any], session_id:str, ip_addr:str) -> None:
