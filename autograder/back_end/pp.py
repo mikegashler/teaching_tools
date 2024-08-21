@@ -40,8 +40,6 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
         '.class', # compiled java
         '.dat',
         '.exe', 
-        '.htm',
-        '.html',
         '.ncb',
         '.pcb',
         '.pickle',
@@ -80,6 +78,11 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
 def basic_checks(args:List[str], input:str, output:str) -> None:
     # Check for errors
     if output.find('error:') >= 0:
+        raise autograder.RejectSubmission(
+            'There were errors.',
+            args, input, output,
+        )
+    if output.find('Error:') >= 0:
         raise autograder.RejectSubmission(
             'There were errors.',
             args, input, output,
@@ -575,6 +578,142 @@ def evaluate_polymorphism(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     return accept_submission(submission)
 
 def evaluate_ajax(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+    args:List[str] = []
+    input = ''
+    output = autograder.run_nodejs_submission(
+        submission=submission,
+        args=args,
+        input=input,
+        sandbox=False,
+        code_to_inject='''
+const puppeteer = require('puppeteer');
+
+const ag_sleep = async (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
+
+async function ag_testit() {
+    console.log('in testit');
+    const browser = await puppeteer.launch()
+    const page = await browser.newPage();
+    page.on('console', message =>
+        //console.log(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}`)
+        console.log(`${message.text()}`)
+    ).on('pageerror', ({ message }) =>
+        console.log(message)
+    );/*.on('response', response =>
+        console.log(`${response.status()} ${response.url()}`)
+    ).on('requestfailed', request =>
+        console.log(`${request.failure().errorText} ${request.url()}`)
+    );*/
+
+    // Navigate the page to a URL
+    console.log(`[autograder] requesting http://${host}:${port}/client.html`)
+    await page.goto(`http://${host}:${port}/client.html`);
+
+    // Set screen size.
+    //await page.setViewport({width: 1080, height: 1024});
+
+    let max_pushes = 0;
+    for(let i = 0; i < 13; i++) {
+        // Push the button
+        await page.evaluate(() => {
+            let elements = document.getElementsByTagName('button');
+            if (elements.length < 1)
+                throw new Error('No buttons were found on this page!');
+            for (let element of elements) {
+                console.log(`[autograder] Clicking on button "${element.value}${element.innerHTML}"`);
+                element.click();
+            }
+        });
+
+        // Give the server some time to respond
+        await ag_sleep(50);
+
+        // See if the button-press was counted
+        let pushes = await page.evaluate(() => {
+            let how_many = document.getElementById('how_many');
+            if (!how_many) {
+                let spans = document.getElementsByTagName('span');
+                if (spans.length < 1)
+                    throw new Error('No <span> tags were found on this page! Expected one for displaying how many times the button was pushed');
+                how_many = spans[0];
+            }
+            try {
+                let pushes = Number(how_many.innerHTML);
+                return pushes;
+            } catch {
+                console.log(`Expected the contents of the <span> tag to be a number. Got "${how_many.innerHTML}"`)
+                return 0;
+            }
+        });
+        max_pushes = Math.max(max_pushes, pushes);
+    }
+
+    // Check results
+    if (max_pushes < 12)
+        console.log('Error: I pushed the button 13 times. I expected to find a span containing a number that grew with each button press. But I could not find any such span.')
+
+    // Shut down
+    console.log('Shutting down browser...');
+    await browser.close();
+    console.log('Done. Passed.');
+}
+
+// Launch the autograder tests
+ag_testit().then(() => { server.close(); });
+
+'''
+    )
+    basic_checks(args, input, output)
+
+    if output.find('12') < 0:
+        raise autograder.RejectSubmission(
+            'Failed to execute.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(submission)
+
+def evaluate_game(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+    if True:
+        raise autograder.RejectSubmission(
+            'Sorry, the autograder is not yet set up for this assignment.',
+            [], '', '',
+        )
+    # Accept the submission
+    return accept_submission(submission)
+
+def evaluate_async(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+    if True:
+        raise autograder.RejectSubmission(
+            'Sorry, the autograder is not yet set up for this assignment.',
+            [], '', '',
+        )
+    # Accept the submission
+    return accept_submission(submission)
+
+def evaluate_typescript(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+    if True:
+        raise autograder.RejectSubmission(
+            'Sorry, the autograder is not yet set up for this assignment.',
+            [], '', '',
+        )
+    # Accept the submission
+    return accept_submission(submission)
+
+def evaluate_python(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+    if True:
+        raise autograder.RejectSubmission(
+            'Sorry, the autograder is not yet set up for this assignment.',
+            [], '', '',
+        )
     # Accept the submission
     return accept_submission(submission)
 
@@ -586,47 +725,75 @@ course_desc:Mapping[str,Any] = {
             'title': 'Project 1 - Map Editor',
             'due_time': datetime(year=2024, month=8, day=29, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 4,
+            'weight': 5,
             'evaluator': evaluate_map_editor,
         },
         'objects': {
             'title': 'Project 2 - Objects',
             'due_time': datetime(year=2024, month=9, day=10, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 4,
+            'weight': 5,
             'evaluator': evaluate_objects,
         },
         'polymorphism': {
             'title': 'Project 3 - Polymorphism',
             'due_time': datetime(year=2024, month=9, day=17, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 4,
+            'weight': 5,
             'evaluator': evaluate_polymorphism,
         },
         'midterm1': {
             'title': 'Midterm 1',
             'due_time': datetime(year=2024, month=9, day=26, hour=23, minute=59, second=59),
-            'weight': 18,
-            'points': 86,
+            'weight': 20,
+            'points': 100,
         },
         'ajax': {
             'title': 'Project 4 - AJAX',
             'due_time': datetime(year=2024, month=10, day=3, hour=23, minute=59, second=59),
             'points': 100,
-            'weight': 4,
+            'weight': 5,
             'evaluator': evaluate_ajax,
+        },
+        'game': {
+            'title': 'Project 5 - Game or Chat',
+            'due_time': datetime(year=2024, month=10, day=17, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 5,
+            'evaluator': evaluate_game,
+        },
+        'async': {
+            'title': 'Project 5 - Async programming',
+            'due_time': datetime(year=2024, month=10, day=29, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 5,
+            'evaluator': evaluate_async,
         },
         'midterm2': {
             'title': 'Midterm 2',
             'due_time': datetime(year=2024, month=10, day=31, hour=23, minute=59, second=59),
-            'weight': 18,
-            'points': 67,
+            'weight': 20,
+            'points': 100,
+        },
+        'async': {
+            'title': 'Project 6 - Typescript',
+            'due_time': datetime(year=2024, month=11, day=12, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 5,
+            'evaluator': evaluate_typescript,
+        },
+        'async': {
+            'title': 'Project 6 - Python',
+            'due_time': datetime(year=2024, month=11, day=26, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 5,
+            'evaluator': evaluate_python,
         },
         'final': {
             'title': 'Final exam',
             'due_time': datetime(year=2024, month=12, day=10, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 85,
+            'points': 100,
         },
     }
 }

@@ -66,6 +66,14 @@ find . -name "*.class" -exec rm -rf {} \;
 exit 0
 '''
 
+launch_nodejs = '''#!/bin/bash
+set -e
+pwd
+node server.js < _stdin.txt
+find . -name "*.png" -exec rm -rf {} \;
+exit 0
+'''
+
 # Executes a submission with the specified args and input, and returns its output
 def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='', sandbox:bool=True) -> str:
     # Write the input to a file
@@ -367,6 +375,69 @@ def run_java_gui_submission(
     # Put a launch script in the same folder as run.bash
     with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
         f.write(launch_java)
+
+    try:
+        # Launch it
+        if sandbox:
+            subprocess.run(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
+            cp = subprocess.run(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            output = cp.stdout
+        else:
+            cp = subprocess.run(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            output = cp.stdout
+    except CalledProcessError as cpe:
+        print(traceback.format_exc(), file=sys.stderr)
+        raise RejectSubmission('There was an error running this submission', args, input, f"error: non-zero return code. (Your program should return 0 if it is successful.): {str(cpe)}")
+    except SubprocessError as se:
+        print(traceback.format_exc(), file=sys.stderr)
+        raise RejectSubmission('There was an error running this submission', args, input, f"error: Timed out. (This usually indicates an endless loop in your code.): {str(se)}")
+    except Exception as e:
+        output = b"error: unrecognized error."
+        print('Unrecognized error:')
+        print(traceback.format_exc(), file=sys.stderr)
+        raise RejectSubmission('There was an error running this submission', args, input, f"Unrecognized error: {str(e)}")
+
+    # Clean the output
+    max_output_size = 2000000
+    cleaned_output = output[:max_output_size].decode()
+    return cleaned_output
+
+# A special-purpose version of run_submission for client-server programs that run in NodeJS
+def run_nodejs_submission(
+    submission:Mapping[str,Any],
+    args:List[str]=[],
+    input:str='',
+    sandbox:bool=True,
+    code_to_inject:str='',
+) -> str:
+    input = ''
+    start_folder = submission['folder']
+    server_build_me = os.path.join(start_folder, 'server.js')
+    server_hack_me = os.path.join(start_folder, 'server.hack_me')
+    if not os.path.exists(server_hack_me):
+        # Backup server.js (since we are going to infect it with checking code)
+        if os.path.exists(server_build_me):
+            shutil.copyfile(server_build_me, server_hack_me)
+        else:
+            raise RejectSubmission('Expected a file named server.js in the same folder as run.bash', args, input, '')
+        if not os.path.exists(server_hack_me):
+            raise RejectSubmission('Internal error: Failed to back up server.js', args, input, '')
+
+    # Infect server.js with checking code
+    with open(server_hack_me, 'r') as f:
+        file_string = f.read()
+    file_string += '\n\n\n\n\n\n' + code_to_inject;
+    with open(server_build_me, 'w') as f2:
+        f2.write(file_string)
+
+    # Write the input to a file
+    with open(os.path.join(start_folder, '_stdin.txt'), 'w') as f:
+        f.write(input)
+        f.write('\n\n0\n\n0\n\n0\n\n') # Add a few extra lines to flush any superfluous input prompts
+
+    # Put a launch script in the same folder as run.bash
+    with open(os.path.join(start_folder, '_launch.bash'), 'w') as f:
+        f.write(launch_nodejs)
 
     try:
         # Launch it
@@ -756,12 +827,12 @@ def make_grades(accounts:Dict[str,Any], course_desc:Mapping[str,Any], student:st
             if proj_id in acc or now_time >= due_time:
                 t.append(f'<td>{score}</td>')
                 p.append(f',{score}')
-                weighted_points += weight * score / proj_points
+                weighted_points += weight * score / max(1, proj_points)
             else:
                 t.append(f'<td></td>')
                 p.append(f',')
             col_index += 1
-        t.append(f'<td>{(weighted_points * 100. / sum_weight):.2f}</td></tr>\n')
+        t.append(f'<td>{(weighted_points * 100. / max(1, sum_weight)):.2f}</td></tr>\n')
         eq += f')*100/{chr(col_index)}2'
         p.append(f',{eq}')
         final_score_cell = f'{chr(col_index)}{row_index}'
@@ -930,6 +1001,17 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         rows = params['student_names'].split('\n')
         output = '<br><pre class="code">' + canonicalize_names(rows, list(accounts.keys())) + '</pre><br><br>'
         p.append(output)
+
+    # Make TA action
+    if 'maketa' in params:
+        if not params['maketa'] in accounts:
+            return {
+                'content': f"Error, account for {params['maketa']} not found!"
+            }
+        student_account = accounts[params['maketa']]
+        student_account['ta'] = 'true'
+        save_accounts(course_desc, accounts)
+        print(f'Granted TA authority to {params["resetme"]}')
 
 
 
@@ -1115,6 +1197,25 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
     p.append('</td></tr></table>')
     p.append('</form>')
 
+    # Make TA form
+    p.append('<h2>Make someone a TA</h3>')
+    p.append(f'<form action="{dest_page}"')
+    p.append(' method="post" onsubmit="hash_password(\'password\');">')
+    p.append('<table>')
+    p.append('<tr><td>')
+    p.append('Name to make a TA:')
+    p.append('</td><td>')
+    p.append('<select name="maketa">')
+    p.append(f'<option value="">---</option>')
+    for name in sorted(accounts):
+        if (not 'ta' in accounts[name]) or accounts[name]['ta'] != 'true':
+            p.append(f'<option value="{name}">{name}</option>')
+    p.append('</select>')
+    p.append('</td></tr>')
+    p.append('<tr><td></td><td><input type="submit" value="Grant TA authority">')
+    p.append('</td></tr></table>')
+    p.append('</form>')
+
     page_end(p)
     return {
         'content': ''.join(p),
@@ -1255,7 +1356,7 @@ def receive_submission(
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         p:List[str] = []
-        p.append('Sorry, there was a problem with this submission:<br><br>')
+        p.append('There was a problem with this submission:<br><br>')
         p.append(f'<font color="red">{str(e)}</font><br><br>')
         p.append('Please fix the issue and resubmit.')
         return {
