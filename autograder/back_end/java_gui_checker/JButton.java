@@ -8,9 +8,11 @@ class JButton extends Component
 {
     public String text;
     public ActionListener listener;
+    public String command;
 
     JButton() {
         this.text = "";
+        this.command = "";
     }
 
     JButton(String text) {
@@ -19,7 +21,7 @@ class JButton extends Component
 
     void push() {
         System.out.println("[autograder] Pushing button: '" + this.text + "'");
-        this.listener.actionPerformed(new ActionEvent(this, 0, ""));
+        this.listener.actionPerformed(new ActionEvent(this, 0, this.command));
     }
 
     void setText(String text) {
@@ -28,6 +30,10 @@ class JButton extends Component
 
     String getText() {
         return this.text;
+    }
+
+    void setActionCommand(String text) {
+        this.command = text;
     }
 
     void addActionListener(ActionListener listener) {

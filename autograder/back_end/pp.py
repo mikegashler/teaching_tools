@@ -7,6 +7,7 @@ import autograder
 import re
 import os
 from session import Session
+import math
 
 # Returns the first number in the string.
 # Throws if there is not one.
@@ -267,7 +268,7 @@ def evaluate_objects(submission:Mapping[str,Any]) -> Mapping[str, Any]:
                 scrolled_x = scrolled_item.bx();
                 scrolled_y = scrolled_item.by();
                 if (Math.abs(scrolled_x - 500) + 10 >= Math.abs(scrolled_y - 300))
-                    this.ag_terminate("I placed an item on the map then pressed the down arrow for a while. I expected the map to scroll vertically, but that did not happen.");
+                    this.ag_terminate("I placed an item on the map then pressed the down arrow for a while. I expected the map to scroll vertically, but that did not happen. (Did you put your scrolling code in Controller.keyPressed? If so, try moving that logic to Controller.update.)");
             } else if (this.ag_frame_count == 24) {
                 // Click to place another item at (500,300)
                 this.ag_click(500, 300, 1);
@@ -677,13 +678,415 @@ ag_testit().then(() => { server.close(); });
     # Accept the submission
     return accept_submission(submission)
 
+def sq_dist(x1:float, y1:float, x2:float, y2:float) -> float:
+    return (x2 - x1) ** 2 + (y2 - y1) ** 2
+
 def evaluate_game(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
-    if True:
-        raise autograder.RejectSubmission(
-            'Sorry, the autograder is not yet set up for this assignment.',
-            [], '', '',
-        )
+    args:List[str] = []
+    input = ''
+    output = autograder.run_nodejs_submission(
+        submission=submission,
+        args=args,
+        input=input,
+        sandbox=False,
+        code_to_inject='''
+const puppeteer = require('puppeteer');
+
+const ag_sleep = async (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
+
+async function ag_testit() {
+    const browser = await puppeteer.launch()
+
+    // Make two browser pages    
+    const page1 = await browser.newPage();
+    const page2 = await browser.newPage();
+    page1.on('console', message =>
+        console.log(`${message.text()}`)
+    ).on('pageerror', ({ message }) =>
+        console.log(message)
+    );
+    page2.on('console', message =>
+        console.log(`${message.text()}`)
+    ).on('pageerror', ({ message }) =>
+        console.log(message)
+    );
+
+    // Navigate the page to a URL
+    console.log(`[autograder] requesting http://${host}:${port}/client.html`)
+    await page1.goto(`http://${host}:${port}/client.html`);
+    await page1.setViewport({width: 1080, height: 768});
+    await page2.goto(`http://${host}:${port}/client.html`);
+    await page2.setViewport({width: 1080, height: 768});
+
+    // Give the page a little time to set up
+    await ag_sleep(100);
+
+    // Do some operations on page 1
+    await page1.evaluate(async () => {
+        let canvases = document.getElementsByTagName('canvas');
+        if (canvases.length < 1) {
+            console.log('[autograder] No canvas found. Evaluating the chat option.');
+
+            // This looks like the chat option
+            const _ag_sleep = async (ms) => {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            };
+
+            // Pass in a list and a starting element.
+            // Fills the list with all text elements containing the specified text.
+            const find_el_with_text = (text, results, el = document.body) => {
+                if (el.nodeType === 3) { // text node
+                    if (el.textContent && el.textContent.search(text) >= 0)
+                        results.push(el);
+                }
+                for (node of el.childNodes) {
+                    find_el_with_text(text, results, node);
+                }
+            };
+
+            // Returns 'right', 'left', or null if it cannot determine
+            const which_bubble = (el) => {
+                if (!el) {
+                    console.log('el is null');
+                    return null;
+                }
+                if (el.classList && el.classList.contains('bubble_left'))
+                    return 'left';
+                if (el.classList && el.classList.contains('bubble_right'))
+                    return 'right';
+                return which_bubble(el.parentElement);
+            };
+
+            // Post an arbitrary word on page 1
+            let textareas = document.getElementsByTagName('textarea');
+            if (textareas.length < 1)
+                throw new Error('No textareas were found on this page!');
+            let arbitrary_word = 'serendipity';
+            textareas[0].value = arbitrary_word;
+            let buttons = document.getElementsByTagName('button');
+            if (buttons.length < 1)
+                throw new Error('No buttons were found on this page!');
+            buttons[0].click();
+
+            // Make sure it is posted immediately in an appropriate bubble
+            await _ag_sleep(15);
+            if (textareas[0].value.search(arbitrary_word) >= 0)
+                throw new Error('After posting a message on page 1, the message still remained in the textarea where text is entered. It should be cleared from there.')
+            let bubbles = [];
+            find_el_with_text(arbitrary_word, bubbles);
+            console.log(`bubbles.length=${bubbles.length}, bubbles[0]=${bubbles[0]}`);
+            if (bubbles.length <= 0)
+                throw new Error('I posted a message on page 1, but it was not displayed immediately. (Users should not have to wait for the server to respond to see their own messages.)');
+            if (bubbles.length > 1)
+                throw new Error('I posted a message on page 1, but it appeared multiple times on the screen. I expected it to appear in only one place.');
+            let lr = which_bubble(bubbles[0]);
+            if (lr === 'left')
+                throw new Error('The messages you post are supposed to be displayed in a div with the class bubble_right. But I posted a message on page 1 and it was displayed in a div with the class bubble_left.');
+            if (lr === 'right') {
+            } else {
+                console.log(`lr=${lr}`);
+                throw new Error('The messages you post are supposed to be displayed in a div with the class bubble_right. But I posted a message on page 1 and the enclosing div did not have this class.');
+            }
+        } else {
+            // This looks like the game option, so let's set up
+            // a few operations to facilitate testing the game
+            console.log('[autograder] Found a canvas. Evaluating the game option.');
+            const canvas = canvases[0];
+
+            CanvasRenderingContext2D.prototype.drawImage = (...args) => {
+                if (args[0] && args[0].width)
+                    console.log(`page 1 image at ${args[1] + args[0].width / 2},${args[2] + args[0].height}.`);
+            };
+
+            const left_click_on_canvas = (x, y) => {
+                console.log(`p1 left-clicking at ${x}, ${y}`);
+                const rect = canvas.getBoundingClientRect();
+                const clickEvent = new MouseEvent('click', {
+                    clientX: x + rect.left,
+                    clientY: y + rect.top,
+                    button: 0,
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                });
+                canvas.dispatchEvent(clickEvent);
+            }
+
+            const right_click_on_canvas = (x, y) => {
+                console.log(`p1 right-clicking at ${x}, ${y}`);
+                const rect = canvas.getBoundingClientRect();
+                const clickEvent = new MouseEvent('contextmenu', {
+                    clientX: x + rect.left,
+                    clientY: y + rect.top,
+                    button: 2,
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                });
+                //game.controller.onRightClick(clickEvent);
+                canvas.dispatchEvent(clickEvent);
+            }
+
+            // Send the robot on page 1 to a destination
+            left_click_on_canvas(55, 66);
+
+            // Throw fireballs on page 1 to two different destinations
+            right_click_on_canvas(777, 444);
+            right_click_on_canvas(555, 111);
+        }
+    });
+
+    // Give the server some time to propagate
+    await ag_sleep(500);
+
+    // Do some operations on page 2
+    await page2.evaluate(async () => {
+        let canvases = document.getElementsByTagName('canvas');
+        if (canvases.length < 1) {
+            // This looks like the chat option, so let's create some operations
+            // for testing that.
+            console.log('[autograder] No canvas found. Evaluating the chat option.');
+
+            // Pass in a list and a starting element.
+            // Fills the list with all text elements containing the specified text.
+            const find_el_with_text = (text, results, el = document.body) => {
+                if (el.nodeType === 3) { // text node
+                    if (el.textContent && el.textContent.search(text) >= 0)
+                        results.push(el);
+                }
+                for (node of el.childNodes) {
+                    find_el_with_text(text, results, node);
+                }
+            };
+
+            // Returns 'right', 'left', or null if it cannot determine
+            const which_bubble = (el) => {
+                if (!el) {
+                    console.log('el is null');
+                    return null;
+                }
+                if (el.classList && el.classList.contains('bubble_left'))
+                    return 'left';
+                if (el.classList && el.classList.contains('bubble_right'))
+                    return 'right';
+                return which_bubble(el.parentElement);
+            };
+
+            // Check that we received the arbitrary word
+            let arbitrary_word = 'serendipity';
+            let bubbles = [];
+            find_el_with_text(arbitrary_word, bubbles);
+            if (bubbles.length <= 0)
+                throw new Error('I posted a message on page 1, then waited a while, but then could not find the message on page 2. Is chat even working?');
+            if (bubbles.length > 1)
+                throw new Error('I posted a message on page 1, but it appeared multiple times on page 2.');
+            let lr = which_bubble(bubbles[0]);
+            if (lr === 'right')
+                throw new Error('The messages posed by someone else are supposed to be displayed in a div with the class bubble_left. But I posted a message from page 1 and it was displayed on page 2 in a div with the class bubble_right.');
+            if (lr === 'left') {
+            } else
+                throw new Error('The messages others post are supposed to be displayed in a div with the class bubble_left. But I posted a message from page 1 and the enclosing div on page 2 did not have this class.');
+
+            // Post an alternate word on page 2
+            let alternate_word = 'extinguisher';
+            let textareas = document.getElementsByTagName('textarea');
+            if (textareas.length < 1)
+                throw new Error('No textareas were found on this page!');
+            textareas[0].value = alternate_word;
+            let buttons = document.getElementsByTagName('button');
+            if (buttons.length < 1)
+                throw new Error('No buttons were found on this page!');
+            buttons[0].click();
+
+            // Check that the alternate word was posted immediately in an approprate bubble
+            //await ag_sleep(15);
+            if (textareas[0].value.search(alternate_word) >= 0)
+                throw new Error('After posting a message on page 2, the message still remained in the textarea where text is entered. It should be cleared from there.')
+            bubbles = [];
+            find_el_with_text(alternate_word, bubbles);
+            if (bubbles.length <= 0)
+                throw new Error('I posted a message on page 2, but it was not displayed immediately. (Users should not have to wait for the server to respond to see their own messages.)');
+            if (bubbles.length > 1)
+                throw new Error('I posted a message on page 2, but it appeared multiple times on the screen. I expected it to appear in only one place.');
+            lr = which_bubble(bubbles[0]);
+            if (lr === 'left')
+                throw new Error('The messages you post are supposed to be displayed in a div with the class bubble_right. But I posted a message on page 2 and it was displayed in a div with the class bubble_left.');
+            if (lr === 'right') {
+            } else
+                throw new Error('The messages you post are supposed to be displayed in a div with the class bubble_right. But I posted a message on page 2 and the enclosing div did not have this class.');
+        } else {
+            // This looks like the game option, so let's set up
+            // a few operations to facilitate testing the game
+            console.log('[autograder] Found a canvas. Evaluating the game option.');
+            const canvas = canvases[0];
+
+            CanvasRenderingContext2D.prototype.drawImage = (...args) => {
+                if (args[0] && args[0].width)
+                    console.log(`page 2 image at ${args[1] + args[0].width / 2},${args[2] + args[0].height}.`);
+            };
+
+            const left_click_on_canvas = (x, y) => {
+                console.log(`p2 left-clicking at ${x}, ${y}`);
+                const rect = canvas.getBoundingClientRect();
+                const clickEvent = new MouseEvent('click', {
+                    clientX: x + rect.left,
+                    clientY: y + rect.top,
+                    button: 0,
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                });
+                canvas.dispatchEvent(clickEvent);
+            }
+
+            const right_click_on_canvas = (x, y) => {
+                console.log(`p2 right-clicking at ${x}, ${y}`);
+                const rect = canvas.getBoundingClientRect();
+                const clickEvent = new MouseEvent('contextmenu', {
+                    clientX: x + rect.left,
+                    clientY: y + rect.top,
+                    button: 2,
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                });
+
+                game.controller.onRightClick(clickEvent);
+                canvas.dispatchEvent(clickEvent);
+            }
+
+            // Send the robot on page 2 to a destination
+            left_click_on_canvas(555, 444);
+
+            // Throw fireballs on page 2 to two different destinations
+            right_click_on_canvas(777, 11);
+            right_click_on_canvas(66, 333);
+        }
+    });
+
+    // Give the server some time to propagate
+    await ag_sleep(600);
+
+    // Do some final operations on page 1
+    const final_message = await page1.evaluate(async () => {
+        let canvases = document.getElementsByTagName('canvas');
+        if (canvases.length < 1) {
+            // This looks like the chat option
+
+            // Pass in a list and a starting element.
+            // Fills the list with all text elements containing the specified text.
+            const find_el_with_text = (text, results, el = document.body) => {
+                if (el.nodeType === 3) { // text node
+                    if (el.textContent && el.textContent.search(text) >= 0)
+                        results.push(el);
+                }
+                for (node of el.childNodes) {
+                    find_el_with_text(text, results, node);
+                }
+            };
+
+            // Returns 'right', 'left', or null if it cannot determine
+            const which_bubble = (el) => {
+                if (!el) {
+                    console.log('el is null');
+                    return null;
+                }
+                if (el.classList && el.classList.contains('bubble_left'))
+                    return 'left';
+                if (el.classList && el.classList.contains('bubble_right'))
+                    return 'right';
+                return which_bubble(el.parentElement);
+            };
+
+            // Check that we received the alternate word
+            let alternate_word = 'extinguisher';
+            let bubbles = [];
+            find_el_with_text(alternate_word, bubbles);
+            if (bubbles.length <= 0)
+                throw new Error('I posted a message on page 2, then waited a while, but then could find the message on page 1. Chat should work in both directions.');
+            if (bubbles.length > 1)
+                throw new Error('I posted a message on page 2, but it appeared multiple times on page 1.');
+            let lr = which_bubble(bubbles[0]);
+            if (lr === 'right')
+                throw new Error('The messages posed by someone else are supposed to be displayed in a div with the class bubble_left. But I posted a message from page 2 and it was displayed on page 1 in a div with the class bubble_right.');
+            if (lr === 'left') {
+            } else
+                throw new Error('The messages others post are supposed to be displayed in a div with the class bubble_left. But I posted a message from page 2 and the enclosing div on page 1 did not have this class.');
+            return "Chat option passed all tests";
+        } else {
+            // There is nothing left that we need to do for the game option
+            return "Game option";
+        }
+    });
+
+    // Run for a few seconds
+    await ag_sleep(4500);
+
+    // Shut down
+    console.log(`[autograder] ${final_message}`);
+    console.log('Shutting down browser...');
+    await browser.close();
+}
+
+// Launch the autograder tests
+ag_testit().then(() => { server.close(); });
+
+'''
+    )
+    basic_checks(args, input, output)
+
+    if output.find('Game option') >= 0:
+        #           p1robot p2robot  p1fb1   p1fb2   p2fb1   p2fb2
+        spots_x = [ 55,     555,     777,    555,    777,    66 ]
+        spots_y = [ 66,     444,     444,    111,    11,     333 ]
+        min_sq_dists = [ 1e100 ] * 12
+
+        # Evaluate all the image spots on page 1
+        cur_pos = -1
+        while True:
+            sentinel_1 = 'page 1 image at '
+            next_pos = output.find(sentinel_1, cur_pos + 1)
+            if next_pos < 0:
+                break
+            cur_pos = next_pos
+            sentinel_2_pos = output.find(',', cur_pos + len(sentinel_1))
+            sentinel_3_pos = output.find('.', sentinel_2_pos + 1)
+            if sentinel_3_pos > 0:
+                x = float(output[cur_pos + len(sentinel_1):sentinel_2_pos])
+                y = float(output[sentinel_2_pos + 1:sentinel_3_pos])
+                for i in range(len(spots_x)):
+                    dd = sq_dist(x, y, spots_x[i], spots_y[i])
+                    min_sq_dists[i] = min(min_sq_dists[i], dd)
+
+        # Evaluate all the image spots on page 2
+        cur_pos = -1
+        while True:
+            sentinel_1 = 'page 2 image at '
+            next_pos = output.find(sentinel_1, cur_pos + 1)
+            if next_pos < 0:
+                break
+            cur_pos = next_pos
+            sentinel_2_pos = output.find(',', cur_pos + len(sentinel_1))
+            sentinel_3_pos = output.find('.', sentinel_2_pos + 1)
+            if sentinel_3_pos > 0:
+                x = float(output[cur_pos + len(sentinel_1):sentinel_2_pos])
+                y = float(output[sentinel_2_pos + 1:sentinel_3_pos])
+                for i in range(len(spots_x)):
+                    dd = sq_dist(x, y, spots_x[i], spots_y[i])
+                    min_sq_dists[6 + i] = min(min_sq_dists[6 + i], dd)
+
+        # Check results
+        min_dists = [ math.sqrt(x) for x in min_sq_dists ]
+        for dist in min_dists:
+            if dist > 150:
+                raise autograder.RejectSubmission(
+                    f'Some of the robots and/or fireballs did not go where they were directed to go from the other browser. (min_dists={min_dists})',
+                    args, input, output,
+                )
+
     # Accept the submission
     return accept_submission(submission)
 
@@ -763,7 +1166,7 @@ course_desc:Mapping[str,Any] = {
             'evaluator': evaluate_game,
         },
         'async': {
-            'title': 'Project 5 - Async programming',
+            'title': 'Project 6 - Async programming',
             'due_time': datetime(year=2024, month=10, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 5,
@@ -776,14 +1179,14 @@ course_desc:Mapping[str,Any] = {
             'points': 100,
         },
         'async': {
-            'title': 'Project 6 - Typescript',
+            'title': 'Project 7 - Typescript',
             'due_time': datetime(year=2024, month=11, day=12, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 5,
             'evaluator': evaluate_typescript,
         },
         'async': {
-            'title': 'Project 6 - Python',
+            'title': 'Project 8 - Python',
             'due_time': datetime(year=2024, month=11, day=26, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 5,

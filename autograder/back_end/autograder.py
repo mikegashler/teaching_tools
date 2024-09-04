@@ -2,6 +2,7 @@ from typing import Mapping, Any, List, Dict, cast, Callable, Optional, Tuple
 import json
 import shutil
 import zipfile
+import tarfile
 import os
 from datetime import datetime, timedelta
 from http_daemon import log
@@ -68,7 +69,6 @@ exit 0
 
 launch_nodejs = '''#!/bin/bash
 set -e
-pwd
 node server.js < _stdin.txt
 find . -name "*.png" -exec rm -rf {} \;
 exit 0
@@ -89,11 +89,11 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
     try:
         # Launch it
         if sandbox:
-            subprocess.run(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
-            cp = subprocess.run(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            subprocess.run(f'cd "{start_folder}"; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
+            cp = subprocess.run(f'cd "{start_folder}"; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
             output = cp.stdout
         else:
-            cp = subprocess.run(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            cp = subprocess.run(f'cd "{start_folder}"; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
             output = cp.stdout
     except CalledProcessError as cpe:
         print(traceback.format_exc(), file=sys.stderr)
@@ -108,7 +108,7 @@ def run_submission(submission:Mapping[str,Any], args:List[str]=[], input:str='',
         raise RejectSubmission('There was an error running this submission', args, input, f"Unrecognized error: {str(e)}")
 
     # Clean the output
-    max_output_size = 2000000
+    max_output_size = 16000000
     cleaned_output = output[:max_output_size].decode()
     cleaned_output = cleaned_output.replace('Success: no issues found ', 'MyPy found no typing issues ')
     cleaned_output = cleaned_output.replace('find: ‘./.mypy_cache’: No such file or directory', '')
@@ -132,33 +132,6 @@ import java.io.PrintWriter;
 import java.awt.Component;
 '''
     classes_to_inject += '''
-class AGSprite
-{
-    Image image;
-    int x;
-    int y;
-    int w;
-    int h;
-
-    public AGSprite(Image image, int x, int y, int w, int h)
-    {
-        this.image = image;
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
-    }
-
-    // Returns the x value of the base point
-    int bx() {
-        return this.x + this.w / 2;
-    }
-
-    // Returns the y value of the base point
-    int by() {
-        return this.y + this.h;
-    }
-}
 '''
     member_variables_to_inject += '''
     static Controller ag_controller = null;
@@ -379,11 +352,11 @@ def run_java_gui_submission(
     try:
         # Launch it
         if sandbox:
-            subprocess.run(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
-            cp = subprocess.run(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            subprocess.run(f'cd "{start_folder}"; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
+            cp = subprocess.run(f'cd "{start_folder}"; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
             output = cp.stdout
         else:
-            cp = subprocess.run(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            cp = subprocess.run(f'cd "{start_folder}"; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
             output = cp.stdout
     except CalledProcessError as cpe:
         print(traceback.format_exc(), file=sys.stderr)
@@ -442,11 +415,11 @@ def run_nodejs_submission(
     try:
         # Launch it
         if sandbox:
-            subprocess.run(f'cd {start_folder}; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
-            cp = subprocess.run(f'cd {start_folder}; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            subprocess.run(f'cd "{start_folder}"; chown sandbox:sandbox .; chown -R sandbox:sandbox *; chmod 755 _launch.bash', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=5)
+            cp = subprocess.run(f'cd "{start_folder}"; runuser -u sandbox ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
             output = cp.stdout
         else:
-            cp = subprocess.run(f'cd {start_folder}; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
+            cp = subprocess.run(f'cd "{start_folder}"; chmod 755 _launch.bash; ./_launch.bash {" ".join(args)}', stdout=subprocess.PIPE, stderr=STDOUT, shell=True, timeout=30)
             output = cp.stdout
     except CalledProcessError as cpe:
         print(traceback.format_exc(), file=sys.stderr)
@@ -472,12 +445,14 @@ def unpack_submission(params:Mapping[str, Any], course:str, project_id:str, stud
     # Make sure we received a zip file
     zipfilename = params['filename']
     _, extension = os.path.splitext(zipfilename)
-    if not extension == '.zip':
-        raise ValueError(f'Expected a file with the extension ".zip". Got "{extension}".')
+    if extension == '.zip' or extension == '.gz' or extension == '.tgz' or extension == '.bz2':
+        pass
+    else:
+        raise ValueError(f'Expected a file with the extension ".zip" or ".gz" or ".tgz" or ".bz2". Got "{extension}".')
     if os.stat(zipfilename).st_size >= 2000000:
         log(f'Received a file named {zipfilename} that was too big ({os.stat(zipfilename).st_size}). Deleting it and aborting.')
         os.remove(zipfilename)
-        raise ValueError(f'Expected the zip to be less than 2MB.')
+        raise ValueError(f'Expected the zip or tarball to be less than 2MB.')
 
     # Make a folder for the submission
     t = datetime.now()
@@ -489,8 +464,27 @@ def unpack_submission(params:Mapping[str, Any], course:str, project_id:str, stud
 
     # Unzip it
     shutil.move(zipfilename, zipname)
-    with zipfile.ZipFile(zipname, 'r') as zip_ref:
-        zip_ref.extractall(basename)
+    if extension == '.zip':
+        with zipfile.ZipFile(zipname, 'r') as zip_ref:
+            zip_ref.extractall(basename)
+    elif extension == '.gz' or extension == '.tgz' or extension == '.bz2':
+        with tarfile.open(zipname) as tar_ref: 
+            tar_ref.extractall(basename)
+    else:
+        raise ValueError(f'Unsupported extension: {extension}')
+
+    # Convert back-slashes to forward-slashes (because some Windows zip utilities have a bug
+    # that improperly encodes backslashes into the path in voliation of the zip specification)
+    filenames = [ fn for fn in os.listdir(basename) if os.path.isfile(os.path.join(basename, fn)) ]
+    for fn in filenames:
+        if fn.find('\\') >= 0:
+            fn_fixed = fn.replace('\\', '/')
+            last_slash_index = fn_fixed.rfind('/')
+            dest_path = os.path.join(basename, fn_fixed[:last_slash_index])
+            os.makedirs(dest_path, exist_ok=True)
+            orig_fn = os.path.join(basename, fn)
+            dest_fn = os.path.join(dest_path, fn_fixed[last_slash_index+1:])
+            os.rename(orig_fn, dest_fn) # does not work with '\\'
 
     # Find the "run.bash" file
     start_folder = ''
