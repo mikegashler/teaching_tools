@@ -287,7 +287,7 @@ def evaluate_objects(submission:Mapping[str,Any]) -> Mapping[str, Any]:
                 ag_print_images();
                 AGSprite scrolled_item = this.ag_find_sprite(500, Integer.MAX_VALUE);
                 if (Math.abs(scrolled_item.bx() - scrolled_x) + Math.abs(scrolled_item.by() - scrolled_y) > 10)
-                    this.ag_terminate("When I right-clicked, it removed an item that was not the closest item to where I clicked!");
+                    this.ag_terminate("When I scrolled and then right-clicked, it removed an item that was not the closest item to where I clicked! Did you convert the mouse position in Controller.mousePressed from view coordinates to model coordinates before you measured distance to the map items?");
             } else if (this.ag_frame_count >= 32 && this.ag_frame_count <= 38) {
                 // Right-click (more times than there are images)
                 this.ag_click(500, 300, 3);
@@ -595,7 +595,6 @@ const ag_sleep = async (ms) => {
 };
 
 async function ag_testit() {
-    console.log('in testit');
     const browser = await puppeteer.launch()
     const page = await browser.newPage();
     page.on('console', message =>
@@ -750,7 +749,6 @@ async function ag_testit() {
             // Returns 'right', 'left', or null if it cannot determine
             const which_bubble = (el) => {
                 if (!el) {
-                    console.log('el is null');
                     return null;
                 }
                 if (el.classList && el.classList.contains('bubble_left'))
@@ -777,7 +775,6 @@ async function ag_testit() {
                 throw new Error('After posting a message on page 1, the message still remained in the textarea where text is entered. It should be cleared from there.')
             let bubbles = [];
             find_el_with_text(arbitrary_word, bubbles);
-            console.log(`bubbles.length=${bubbles.length}, bubbles[0]=${bubbles[0]}`);
             if (bubbles.length <= 0)
                 throw new Error('I posted a message on page 1, but it was not displayed immediately. (Users should not have to wait for the server to respond to see their own messages.)');
             if (bubbles.length > 1)
@@ -787,7 +784,6 @@ async function ag_testit() {
                 throw new Error('The messages you post are supposed to be displayed in a div with the class bubble_right. But I posted a message on page 1 and it was displayed in a div with the class bubble_left.');
             if (lr === 'right') {
             } else {
-                console.log(`lr=${lr}`);
                 throw new Error('The messages you post are supposed to be displayed in a div with the class bubble_right. But I posted a message on page 1 and the enclosing div did not have this class.');
             }
         } else {
@@ -798,11 +794,11 @@ async function ag_testit() {
 
             CanvasRenderingContext2D.prototype.drawImage = (...args) => {
                 if (args[0] && args[0].width)
-                    console.log(`page 1 image at ${args[1] + args[0].width / 2},${args[2] + args[0].height}.`);
+                    console.log(`[autograder] page 1 image at ${args[1] + args[0].width / 2},${args[2] + args[0].height}.`);
             };
 
             const left_click_on_canvas = (x, y) => {
-                console.log(`p1 left-clicking at ${x}, ${y}`);
+                console.log(`[autograder] p1 left-clicking at ${x}, ${y}`);
                 const rect = canvas.getBoundingClientRect();
                 const clickEvent = new MouseEvent('click', {
                     clientX: x + rect.left,
@@ -816,7 +812,7 @@ async function ag_testit() {
             }
 
             const right_click_on_canvas = (x, y) => {
-                console.log(`p1 right-clicking at ${x}, ${y}`);
+                console.log(`[autograder] p1 right-clicking at ${x}, ${y}`);
                 const rect = canvas.getBoundingClientRect();
                 const clickEvent = new MouseEvent('contextmenu', {
                     clientX: x + rect.left,
@@ -865,7 +861,6 @@ async function ag_testit() {
             // Returns 'right', 'left', or null if it cannot determine
             const which_bubble = (el) => {
                 if (!el) {
-                    console.log('el is null');
                     return null;
                 }
                 if (el.classList && el.classList.contains('bubble_left'))
@@ -925,11 +920,11 @@ async function ag_testit() {
 
             CanvasRenderingContext2D.prototype.drawImage = (...args) => {
                 if (args[0] && args[0].width)
-                    console.log(`page 2 image at ${args[1] + args[0].width / 2},${args[2] + args[0].height}.`);
+                    console.log(`[autograder] page 2 image at ${args[1] + args[0].width / 2},${args[2] + args[0].height}.`);
             };
 
             const left_click_on_canvas = (x, y) => {
-                console.log(`p2 left-clicking at ${x}, ${y}`);
+                console.log(`[autograder] p2 left-clicking at ${x}, ${y}`);
                 const rect = canvas.getBoundingClientRect();
                 const clickEvent = new MouseEvent('click', {
                     clientX: x + rect.left,
@@ -943,7 +938,7 @@ async function ag_testit() {
             }
 
             const right_click_on_canvas = (x, y) => {
-                console.log(`p2 right-clicking at ${x}, ${y}`);
+                console.log(`[autograder] p2 right-clicking at ${x}, ${y}`);
                 const rect = canvas.getBoundingClientRect();
                 const clickEvent = new MouseEvent('contextmenu', {
                     clientX: x + rect.left,
@@ -991,7 +986,6 @@ async function ag_testit() {
             // Returns 'right', 'left', or null if it cannot determine
             const which_bubble = (el) => {
                 if (!el) {
-                    console.log('el is null');
                     return null;
                 }
                 if (el.classList && el.classList.contains('bubble_left'))
@@ -1027,7 +1021,7 @@ async function ag_testit() {
 
     // Shut down
     console.log(`[autograder] ${final_message}`);
-    console.log('Shutting down browser...');
+    console.log('[autograder] Shutting down browser...');
     await browser.close();
 }
 
@@ -1092,29 +1086,69 @@ ag_testit().then(() => { server.close(); });
 
 def evaluate_async(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
-    if True:
+    js_count = 0
+    for fn in os.listdir(submission['folder']):
+        _, ext = os.path.splitext(fn)
+        if ext == '.js':
+            js_count += 1
+            with open(os.path.join(submission['folder'], fn), 'r') as f:
+                content = f.read()
+            if content.find('.then') >= 0:
+                raise autograder.RejectSubmission(
+                    'The expression ".then" is still found in your code. You were supposed to completely remove those (not just comment them out) and use await to make it work instead.',
+                    [], '', '',
+                )
+    if js_count < 2:
         raise autograder.RejectSubmission(
-            'Sorry, the autograder is not yet set up for this assignment.',
+            'Expected at least two .js files in your submission. There should be one that implements the back end and one used by the front end.',
             [], '', '',
         )
+
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_typescript(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
-    if True:
+
+    ts_count = 0
+    for fn in os.listdir(submission['folder']):
+        _, ext = os.path.splitext(fn)
+        if ext == '.ts':
+            ts_count += 1
+        elif ext == '.js':
+            raise autograder.RejectSubmission(
+                'There are .js files in your submission. You were supposed to replace those with .ts files, and set up your run.bash file to transpile them into .js files using the typescript compiler.',
+                [], '', '',
+            )
+        elif fn == 'run.bash':
+            with open(os.path.join(submission['folder'], fn), 'r') as f:
+                content = f.read()
+            if content.find('--strict') < 0:
+                raise autograder.RejectSubmission(
+                    'You are supposed to use the --strict flag with the typescript compiler.',
+                    [], '', '',
+                )
+            if content.find('tsc') < 0:
+                raise autograder.RejectSubmission(
+                    'Did not find "tsc" in your run.bash file. Are you using the typescript compiler to transpile your .ts file into .js files?',
+                    [], '', '',
+                )
+    if ts_count < 2:
         raise autograder.RejectSubmission(
-            'Sorry, the autograder is not yet set up for this assignment.',
+            'There should be a typescript file for your back end and one for your front end. I could not find these in your submission.',
             [], '', '',
         )
+
     # Accept the submission
     return accept_submission(submission)
 
 def evaluate_python(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
-    if True:
+
+    output = autograder.run_submission(submission)
+    if output.find('hours working to build something in Python') < 0:
         raise autograder.RejectSubmission(
-            'Sorry, the autograder is not yet set up for this assignment.',
+            'When I executed your run.bash file, it did not output the string specified in the instructions.',
             [], '', '',
         )
     # Accept the submission

@@ -26,13 +26,25 @@ class JPanel
     {
         this.width = 1600;
         this.height = 900;
-        this.graphics = new Graphics();
+        this.graphics = new Graphics2D();
         components = new ArrayList<Component>();
     }
 
     void add(Component comp) {
         components.add(comp);
     }
+
+    void add(Component comp, String pos) {
+        components.add(comp);
+    }
+
+    void add(JPanel comp) {
+    }
+
+    void add(JPanel comp, String pos) {
+    }
+
+    void setOpaque(boolean b) {}
 
     int getWidth()
     {
@@ -45,6 +57,18 @@ class JPanel
     }
 
     void paintComponent(Graphics g)
+    {
+    }
+
+    void setFocusable(boolean b)
+    {
+    }
+
+    void requestFocusInWindow()
+    {
+    }
+
+    void setLayout(Object ob)
     {
     }
 

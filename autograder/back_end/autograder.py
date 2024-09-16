@@ -491,7 +491,7 @@ def unpack_submission(params:Mapping[str, Any], course:str, project_id:str, stud
     for path, folders, files in os.walk(basename):
         if 'run.bash' in files:
             if len(start_folder) > 0:
-                raise ValueError(f'Multiple "fun.bash" files were found in your submission. There should be only one.')
+                raise ValueError(f'Multiple "run.bash" files were found in your submission. There should be only one.')
             start_folder = path
     if start_folder == '':
         raise ValueError(f'No "run.bash" file was found in your submission.')
