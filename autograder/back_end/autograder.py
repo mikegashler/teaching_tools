@@ -69,6 +69,11 @@ exit 0
 
 launch_nodejs = '''#!/bin/bash
 set -e
+# export badpid=$(lsof -ti tcp:8080)
+# if [ ! -z "${badpid}" ]; then
+#     kill -2 ${badpid}
+# fi
+export PATH=$PATH:/home/mgashler/.nvm/versions/node/v20.16.0/bin
 node server.js < _stdin.txt
 find . -name "*.png" -exec rm -rf {} \;
 exit 0
@@ -1005,7 +1010,7 @@ def make_admin_page(params:Mapping[str, Any], session:Session, dest_page:str, ac
         student_account = accounts[params['maketa']]
         student_account['ta'] = 'true'
         save_accounts(course_desc, accounts)
-        print(f'Granted TA authority to {params["resetme"]}')
+        print(f'Granted TA authority to {params["maketa"]}')
 
 
 

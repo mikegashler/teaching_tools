@@ -23,6 +23,8 @@ def next_num(s:str) -> float:
         raise ValueError('No number found')
 
 def submission_checks(submission:Mapping[str,Any]) -> None:
+    #raise autograder.RejectSubmission(f'Sorry, submissions are no longer being accepted. Please contact the instructor.', [], '', '')
+
     # Check for forbidden files or folders
     forbidden_folders = [
         '.DS_Store',
@@ -538,7 +540,7 @@ def evaluate_polymorphism(submission:Mapping[str,Any]) -> Mapping[str, Any]:
                     } else if (name.equals("mushroom")) {
                         if (Math.abs(xdev) > 5 || Math.abs(ydev) > 5)
                             this.ag_terminate("The base (bottom-center) of the " + name + " is not supposed to move. The " + name + " is only supposed to change size");
-                        if (Math.abs(wdev) <= 2 || Math.abs(hdev) <= 2)
+                        if (Math.abs(hdev) <= 2)
                             this.ag_terminate("The mushroom is supposed to grow and shrink in an oscillating manner");
                         this.type_d++;
                     } else {
@@ -586,7 +588,7 @@ def evaluate_ajax(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         submission=submission,
         args=args,
         input=input,
-        sandbox=False,
+        sandbox=True,
         code_to_inject='''
 const puppeteer = require('puppeteer');
 
@@ -637,14 +639,14 @@ async function ag_testit() {
             if (!how_many) {
                 let spans = document.getElementsByTagName('span');
                 if (spans.length < 1)
-                    throw new Error('No <span> tags were found on this page! Expected one for displaying how many times the button was pushed');
+                    throw new Error('No span tags were found on this page! Expected one for displaying how many times the button was pushed');
                 how_many = spans[0];
             }
             try {
                 let pushes = Number(how_many.innerHTML);
                 return pushes;
             } catch {
-                console.log(`Expected the contents of the <span> tag to be a number. Got "${how_many.innerHTML}"`)
+                console.log(`Expected the contents of the span tag to be a number. Got "${how_many.innerHTML}"`)
                 return 0;
             }
         });
@@ -688,7 +690,7 @@ def evaluate_game(submission:Mapping[str,Any]) -> Mapping[str, Any]:
         submission=submission,
         args=args,
         input=input,
-        sandbox=False,
+        sandbox=True,
         code_to_inject='''
 const puppeteer = require('puppeteer');
 
@@ -1174,7 +1176,7 @@ course_desc:Mapping[str,Any] = {
         },
         'polymorphism': {
             'title': 'Project 3 - Polymorphism',
-            'due_time': datetime(year=2024, month=9, day=17, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=9, day=19, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 5,
             'evaluator': evaluate_polymorphism,
@@ -1183,7 +1185,7 @@ course_desc:Mapping[str,Any] = {
             'title': 'Midterm 1',
             'due_time': datetime(year=2024, month=9, day=26, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 100,
+            'points': 89,
         },
         'ajax': {
             'title': 'Project 4 - AJAX',
@@ -1199,29 +1201,29 @@ course_desc:Mapping[str,Any] = {
             'weight': 5,
             'evaluator': evaluate_game,
         },
-        'async': {
-            'title': 'Project 6 - Async programming',
-            'due_time': datetime(year=2024, month=10, day=29, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 5,
-            'evaluator': evaluate_async,
-        },
         'midterm2': {
             'title': 'Midterm 2',
             'due_time': datetime(year=2024, month=10, day=31, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 100,
+            'points': 86,
         },
         'async': {
+            'title': 'Project 6 - Async programming',
+            'due_time': datetime(year=2024, month=11, day=7, hour=23, minute=59, second=59),
+            'points': 100,
+            'weight': 5,
+            'evaluator': evaluate_async,
+        },
+        'typescript': {
             'title': 'Project 7 - Typescript',
-            'due_time': datetime(year=2024, month=11, day=12, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=11, day=14, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 5,
             'evaluator': evaluate_typescript,
         },
-        'async': {
+        'python': {
             'title': 'Project 8 - Python',
-            'due_time': datetime(year=2024, month=11, day=26, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2024, month=12, day=3, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 5,
             'evaluator': evaluate_python,
@@ -1230,7 +1232,7 @@ course_desc:Mapping[str,Any] = {
             'title': 'Final exam',
             'due_time': datetime(year=2024, month=12, day=10, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 100,
+            'points': 92,
         },
     }
 }

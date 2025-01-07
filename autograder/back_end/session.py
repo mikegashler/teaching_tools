@@ -79,9 +79,15 @@ def load_state() -> None:
     global sessions
     global last_save_sessions_time
     if os.path.exists('state.json'):
-        with open('state.json', 'r') as f:
-            server_state = json.loads(f.read())
-        log(f'state loaded')
+        try:
+            with open('state.json', 'r') as f:
+                server_state = json.loads(f.read())
+            log(f'state loaded')
+        except:
+            server_state = {
+                'sessions': {},
+            }
+            log(f'Failed to load state file!!! Flushing sessions and starting over with an empty one!!!')
     else:
         server_state = {
             'sessions': {},

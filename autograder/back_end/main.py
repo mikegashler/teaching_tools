@@ -19,9 +19,9 @@ import pp
 
 # The list of courses this server currently services
 active_courses = [
-#    pf2,
-#    dsa,
-    pp,
+    pf2,
+    dsa,
+    #pp,
 ]
 
 web_server:WebServer
@@ -125,7 +125,6 @@ def main() -> None:
 
     # Get set up
     load_state()
-    banana_quest.load_map()
 
     # Make a web server
     global web_server

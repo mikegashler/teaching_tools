@@ -93,6 +93,53 @@ def basic_checks(args:List[str], input:str, output:str) -> None:
             args, input, output
         )
 
+def evaluate_big_data(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
+    # Test 1: See if it produces the correct output
+    args:List[str] = []
+    input = '''/var/www/autograder/test_data/adult-census.csv
+
+
+
+'''
+    output = autograder.run_submission(submission, args, input, False)
+    basic_checks(args, input, output)
+    if output.find('8614') < 0:
+        raise autograder.RejectSubmission(
+            'Output is missing an expected line containing the string "8614"',
+            args, input, output
+        )
+    if output.find('4687') < 0:
+        raise autograder.RejectSubmission(
+            'Output is missing an expected line containing the string "4687"',
+            args, input, output
+        )
+    if output.find('Bachelors') >= 0:
+        raise autograder.RejectSubmission(
+            'Output had unexpected line containing "Bachelors"',
+            args, input, output
+        )
+    if output.find('Married-spouse-absent') >= 0:
+        raise autograder.RejectSubmission(
+            'Output had unexpected line containing "Married-spouse-absent"',
+            args, input, output
+        )
+    if output.find('Handlers-cleaners') >= 0:
+        raise autograder.RejectSubmission(
+            'Output had unexpected line containing "Handlers-cleaners"',
+            args, input, output
+        )
+    if output.find('Asian-Pac-Islander') >= 0:
+        raise autograder.RejectSubmission(
+            'Output had unexpected line containing "Asian-Pac-Islander"',
+            args, input, output
+        )
+
+    # Accept the submission
+    return accept_submission(submission)
+
+
 def evaluate_hello(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
 
@@ -120,8 +167,12 @@ def evaluate_summarizing(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     args:List[str] = []
     input = '''1
 /var/www/autograder/test_data/stats.csv
-2
+8
 0
+
+
+
+
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
@@ -186,8 +237,11 @@ def evaluate_correlations(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     args:List[str] = []
     input = '''1
 /var/www/autograder/test_data/simple.csv
-2
+8
 0
+
+
+
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
@@ -206,6 +260,21 @@ def evaluate_correlations(submission:Mapping[str,Any]) -> Mapping[str, Any]:
             'The mean value in one of the columns was 5.71428, but I did not find this value in your output.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
+    if output.find('Dana') < 0:
+        raise autograder.RejectSubmission(
+            'Expected to find "Dana" in your output.',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    if output.find('cake') < 0:
+        raise autograder.RejectSubmission(
+            'Expected to find "cake" in your output.',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    if output.find('14') < 0:
+        raise autograder.RejectSubmission(
+            'Expected to find the median value "14" in your output.',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
 
     # Accept the submission
     return accept_submission(submission)
@@ -217,10 +286,12 @@ def evaluate_sorting(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     args:List[str] = []
     input = '''1
 /var/www/autograder/test_data/single_col.csv
-4
+10
 0
-5
 0
+
+
+
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
@@ -240,10 +311,12 @@ def evaluate_sorting(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     args = []
     input = '''1
 /var/www/autograder/test_data/simple.csv
-4
-1
-5
+10
 0
+1
+
+
+
 '''
     output = autograder.run_submission(submission, args, input, False)
     terms_in_order = ['Food', 'doughnut', 'fish', 'apple', 'grapes', 'carrot', 'eggs', 'banana']
@@ -262,10 +335,12 @@ def evaluate_sorting(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     args = []
     input = '''1
 /var/www/autograder/test_data/simple.csv
-4
-2
-5
+10
 0
+2
+
+
+
 '''
     output = autograder.run_submission(submission, args, input, False)
     terms_in_order = ['Food', 'fish', 'eggs', 'apple', 'banana', 'doughnut']
@@ -288,23 +363,34 @@ def evaluate_binary_search(submission:Mapping[str,Any]) -> Mapping[str, Any]:
 
     # Test 1: Do a query
     args:List[str] = []
-    input = '''6
+    input = '''1
 /var/www/autograder/test_data/simple.csv
-7
+6
+0
 0
 dog
 fish
-0
+4
+1
+
+
+
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
-    brown_index = output.find('brown')
+    results_start = output.rfind('enter an ending')
+    if results_start < 0:
+        raise autograder.RejectSubmission(
+            'Expected the string "enter an ending" to appear in the output. Did you change that message?',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    brown_index = output.find('brown', results_start)
     if brown_index < 0:
         raise autograder.RejectSubmission(
             'Expected the row with doughnut to appear in the output',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
-    white_index = output.find('white')
+    white_index = output.find('white', results_start)
     if white_index < 0:
         raise autograder.RejectSubmission(
             'Expected the row with eggs to appear in the output',
@@ -315,13 +401,13 @@ fish
             'Expected doughnut to come before eggs',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
-    fish_index = output.find('fish')
+    fish_index = output.find('fish', results_start)
     if fish_index >= 0:
         raise autograder.RejectSubmission(
             'Did not expect the fish row to be in the output. You are supposed to stop before the end row.',
         args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
-    carrot_index = output.find('carrot')
+    carrot_index = output.find('carrot', results_start)
     if carrot_index >= 0:
         raise autograder.RejectSubmission(
             'Did not expect the carrot row to be in the output. Carrot comes before doughnut.',
@@ -330,29 +416,40 @@ fish
 
     # Test 2: Do another query
     args = []
-    input = '''6
+    input = '''1
 /var/www/autograder/test_data/simple.csv
-7
+6
+0
 2
 2
 4
-0
+4
+1
+
+
+
 '''
     output = autograder.run_submission(submission, args, input, False)
     basic_checks(args, input, output)
-    carrot_pos = output.find('carrot')
+    results_start = output.rfind('enter an ending')
+    if results_start < 0:
+        raise autograder.RejectSubmission(
+            'Expected the string "enter an ending" to appear in the output. Did you change that message?',
+        args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
+        )
+    carrot_pos = output.find('carrot', results_start)
     if carrot_pos < 0:
         raise autograder.RejectSubmission(
             'Expected the carrot row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
-    fish_pos = output.find('fish')
+    fish_pos = output.find('fish', results_start)
     if fish_pos < 0:
         raise autograder.RejectSubmission(
             'Expected the fish row to be in the output.',
             args, input, output, autograder.display_data('/var/www/autograder/test_data/simple.csv')
         )
-    eggs_pos = output.find('eggs')
+    eggs_pos = output.find('eggs', results_start)
     if eggs_pos >= 0:
         raise autograder.RejectSubmission(
             'Did not expect the eggs row to be in the output.',
@@ -664,93 +761,93 @@ course_desc:Mapping[str,Any] = {
     'course_short': 'dsa',
     'course_long': 'Data Structures & Algorithms',
     'projects': {
-        'hello': {
-            'title': 'Project 1',
-            'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
+        'big_data': {
+            'title': 'Project 1 - Big Data',
+            'due_time': datetime(year=2025, month=1, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
-            'evaluator': evaluate_hello,
+            'evaluator': evaluate_big_data,
         },
         'summarizing': {
-            'title': 'Project 2',
-            'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
+            'title': 'Project 2 - Summarizing',
+            'due_time': datetime(year=2025, month=2, day=5, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_summarizing,
         },
         'correlations': {
-            'title': 'Project 3',
-            'due_time': datetime(year=2024, month=2, day=13, hour=23, minute=59, second=59),
+            'title': 'Project 3 - Missing Values',
+            'due_time': datetime(year=2025, month=2, day=13, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_correlations,
         },
         'sorting': {
-            'title': 'Project 4',
-            'due_time': datetime(year=2024, month=2, day=20, hour=23, minute=59, second=59),
+            'title': 'Project 4 - Sorting',
+            'due_time': datetime(year=2025, month=2, day=20, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_sorting,
         },
         'midterm1': {
             'title': 'Midterm 1',
-            'due_time': datetime(year=2024, month=2, day=26, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=2, day=26, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 90,
+            'points': 100,
         },
         'binary_search': {
-            'title': 'Project 5',
-            'due_time': datetime(year=2024, month=3, day=7, hour=23, minute=59, second=59),
+            'title': 'Project 5 - Binary Search',
+            'due_time': datetime(year=2025, month=3, day=7, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_binary_search,
         },
         'attr_ranking': {
-            'title': 'Project 6',
-            'due_time': datetime(year=2024, month=3, day=26, hour=23, minute=59, second=59),
+            'title': 'Project 6 - Attribute Ranking',
+            'due_time': datetime(year=2025, month=3, day=26, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_attr_ranking,
         },
         'pca': {
-            'title': 'Project 7',
-            'due_time': datetime(year=2024, month=4, day=2, hour=23, minute=59, second=59),
+            'title': 'Project 7 - Principal Component Analysis',
+            'due_time': datetime(year=2025, month=4, day=2, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_pca,
         },
         'midterm2': {
             'title': 'Midterm 2',
-            'due_time': datetime(year=2024, month=4, day=9, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=4, day=9, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 75,
+            'points': 100,
         },
         'jupyter': {
             'title': 'Project 8',
-            'due_time': datetime(year=2024, month=4, day=16, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=4, day=16, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_jupyter,
         },
         'pandas': {
             'title': 'Project 9',
-            'due_time': datetime(year=2024, month=4, day=23, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=4, day=23, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_pandas,
         },
         'data_mining': {
             'title': 'Project 10',
-            'due_time': datetime(year=2024, month=4, day=30, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=4, day=30, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_data_mining,
         },
         'final': {
             'title': 'Final exam',
-            'due_time': datetime(year=2024, month=5, day=7, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=5, day=7, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 92,
+            'points': 100,
         },
     }
 }

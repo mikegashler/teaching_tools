@@ -42,20 +42,22 @@ def submission_checks(submission:Mapping[str,Any]) -> None:
         '', # usually compiled C++ apps
         '.bat', # windows batch files
         '.class', # compiled java
-        '.dat',
-        '.exe', 
-        '.htm',
-        '.html',
-        '.ncb',
-        '.pcb',
-        '.pickle',
-        '.pkl',
+        '.dat', # binary data
+        '.exe', # Windows executable
+        '.htm', # Web page
+        '.html', # Web page
+        '.ncb', # old-style VS Code data, I think
+        '.pcb', # pre-compiled binary for incremental builds
+        '.pickle', # A Python data format
+        '.pkl', # A Python data format
         '.o', # C++ object files
         '.obj', # C++ object files
-        '.pdb',
+        '.out', # C++ default output file
+        '.pdb', # old-style debug symbols
         '.ps1', # powershell scripts
-        '.suo', 
-        '.tmp',
+        '.suo', # old-style auto-complete data
+        '.tmp', # garbage file
+        '.dSYM', # ??? 
     ]
     file_count = 0
     base_path = submission['base_path']
@@ -100,31 +102,18 @@ def evaluate_hello(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     # Test 1: See if it produces the exactly correct output
     args = ['aaa', 'bbb', 'ccc']
     input = '''Aloysius
-8'''
+18'''
     output = autograder.run_submission(submission, args, input)
-    expected = '''The arguments passed in were:
-arg 1 = aaa
-arg 2 = bbb
-arg 3 = ccc
-Hello, what is your name?
-> And what is your favorite number?
-> Ok, Aloysius, I will count to 8 (with zero-indexed values):
-0 ah-ah-ah!
-1 ah-ah-ah!
-2 ah-ah-ah!
-3 ah-ah-ah!
-4 ah-ah-ah!
-5 ah-ah-ah!
-6 ah-ah-ah!
-7 ah-ah-ah!
-Thanks for stopping by. Have a nice day!
 
-'''
-    if output != expected:
+    if output.find('18 ah-ah-ah!') >= 0:
         raise autograder.RejectSubmission(
-            'The output does not match the expected output.',
+            'Did not expect it to count past 17.',
             args, input, output,
-            f'Expected output: <pre class="code">{expected}</pre><br><br>',
+        )
+    if output.find('17 ah-ah-ah!') < 0:
+        raise autograder.RejectSubmission(
+            'Expected the string "17 ah-ah-ah!"" to occur in the output',
+            args, input, output,
         )
 
     # Accept the submission
@@ -153,7 +142,7 @@ hair
         )
     if output.find('delta') < 0:
         raise autograder.RejectSubmission(
-            'The words in the lexicon were not displayed when not in debug mode.',
+            'The words in the lexicon should be displayed when not in debug mode.',
             args, input, output,
         )
 
@@ -223,7 +212,21 @@ tricky
     output = autograder.run_submission(submission, args, input)
     if output.find('delta') >= 0:
         raise autograder.RejectSubmission(
-            'When I passed in a superfluous argument, it did not crash. (See step 2.j)',
+            'When I passed in a superfluous argument, it did not crash. It should. (See step 2.j)',
+            args, input, output,
+        )
+
+    # Test 4: failure line
+    args = ['debug', 'failure_line']
+    input = '''alpha
+
+
+
+'''
+    output = autograder.run_submission(submission, args, input)
+    if output.find('this->words[this->word_count]') < 0:
+        raise autograder.RejectSubmission(
+            'When I passed in the "failure_line" flag, it did not print the expected line of code. (See step 4.b)',
             args, input, output,
         )
 
@@ -815,69 +818,29 @@ anaa
     # Accept the submission
     return accept_submission(submission)
 
-def evaluate_hash_tables(submission:Mapping[str,Any]) -> Mapping[str, Any]:
-    submission_checks(submission)
-
-    # Test 1: See if it produces the exactly correct output
-    args = ['quiet']
-    input = '''12
-taco
-acotay
-12
-rice
-iceray
-12
-pineapple
-ineapplepay
-13
-taco
-13
-pineapple
-'''
-    output = autograder.run_submission(submission, args, input)
-    basic_checks(args, input, output)
-    if output.find('iceray') >= 0:
-        raise autograder.RejectSubmission(
-            'Did not expect to find "iceray" in the output. I did not query for "rice"!',
-            args, input, output,
-        )
-    if output.find('ineapplepay') < 0:
-        raise autograder.RejectSubmission(
-            'Expected to find "ineapplepay" in the output.',
-            args, input, output,
-        )
-    if output.find('acotay') < 0:
-        raise autograder.RejectSubmission(
-            'Expected to find "acotay" in the output.',
-            args, input, output,
-        )
-
-    # Accept the submission
-    return accept_submission(submission)
-
 def evaluate_heaps(submission:Mapping[str,Any]) -> Mapping[str, Any]:
     submission_checks(submission)
 
     # Test 1: See if it produces the exactly correct output
     args = ['quiet']
-    input = '''14
+    input = '''12
 salmon
-14
+12
 money
-14
+12
 tarantula
-14
+12
 banana
-14
+12
 zebra
-14
+12
 antelope
-15
-15
-15
-15
-15
-15
+13
+13
+13
+13
+13
+13
 0
 '''
     output = autograder.run_submission(submission, args, input)
@@ -901,110 +864,143 @@ antelope
     # Accept the submission
     return accept_submission(submission)
 
+def evaluate_hash_tables(submission:Mapping[str,Any]) -> Mapping[str, Any]:
+    submission_checks(submission)
+
+    # Test 1: See if it produces the exactly correct output
+    args = ['quiet']
+    input = '''12
+taco
+acotay
+14
+rice
+iceray
+14
+pineapple
+ineapplepay
+15
+taco
+15
+pineapple
+'''
+    output = autograder.run_submission(submission, args, input)
+    basic_checks(args, input, output)
+    if output.find('iceray') >= 0:
+        raise autograder.RejectSubmission(
+            'Did not expect to find "iceray" in the output. I did not query for "rice"!',
+            args, input, output,
+        )
+    if output.find('ineapplepay') < 0:
+        raise autograder.RejectSubmission(
+            'Expected to find "ineapplepay" in the output.',
+            args, input, output,
+        )
+    if output.find('acotay') < 0:
+        raise autograder.RejectSubmission(
+            'Expected to find "acotay" in the output.',
+            args, input, output,
+        )
+
+    # Accept the submission
+    return accept_submission(submission)
+
 course_desc:Mapping[str,Any] = {
     'course_short': 'pf2',
     'course_long': 'Programming Foundations II',
     'projects': {
         'hello': {
             'title': 'Project 1 - Hello World',
-            'due_time': datetime(year=2024, month=1, day=29, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=1, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_hello,
         },
         'debugging': {
             'title': 'Project 2 - Debugging',
-            'due_time': datetime(year=2024, month=2, day=5, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=2, day=5, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_debugging,
         },
         'stacks': {
             'title': 'Project 3 - Dynamic Array',
-            'due_time': datetime(year=2024, month=2, day=12, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=2, day=12, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_stacks,
         },
         'flood_fill': {
             'title': 'Project 4 - Flood Fill',
-            'due_time': datetime(year=2024, month=2, day=19, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=2, day=19, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_flood_fill,
         },
         'midterm1': {
             'title': 'Midterm 1',
-            'due_time': datetime(year=2024, month=2, day=26, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=2, day=26, hour=23, minute=59, second=59),
             'weight': 18,
-            'points': 86,
+            'points': 100,
         },
         'boggle': {
             'title': 'Project  - Boggle',
-            'due_time': datetime(year=2024, month=3, day=4, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=3, day=4, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_boggle,
         },
         'linked_lists': {
             'title': 'Project 6 - Linked Lists',
-            'due_time': datetime(year=2024, month=3, day=11, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=3, day=11, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_linked_lists,
         },
         'merge_sort': {
             'title': 'Project 7 - Merge Sort',
-            'due_time': datetime(year=2024, month=3, day=25, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=3, day=25, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_merge_sort,
         },
         'midterm2': {
             'title': 'Midterm 2',
-            'due_time': datetime(year=2024, month=4, day=1, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=4, day=1, hour=23, minute=59, second=59),
             'weight': 18,
-            'points': 67,
+            'points': 100,
         },
         'binary_search': {
             'title': 'Project 8 - Database',
-            'due_time': datetime(year=2024, month=4, day=15, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=4, day=15, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_binary_search,
         },
-        'memory': {
-            'title': 'Project 9 - Memory Management',
-            'due_time': datetime(year=2024, month=4, day=22, hour=23, minute=59, second=59),
-            'points': 100,
-            'weight': 4,
-            'evaluator': evaluate_memory,
-        },
         'heaps': {
-            'title': 'Project 10 - Priority Queue',
-            'due_time': datetime(year=2024, month=4, day=29, hour=23, minute=59, second=59),
+            'title': 'Project 9 - Priority Queue',
+            'due_time': datetime(year=2025, month=4, day=29, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_heaps,
         },
         'hash_tables': {
-            'title': 'Project 11 - Hash Table',
-            'due_time': datetime(year=2024, month=5, day=2, hour=23, minute=59, second=59),
+            'title': 'Project 10 - Hash Table',
+            'due_time': datetime(year=2025, month=5, day=2, hour=23, minute=59, second=59),
             'points': 100,
             'weight': 4,
             'evaluator': evaluate_hash_tables,
         },
         'lab': {
             'title': 'Lab participation',
-            'due_time': datetime(year=2024, month=5, day=2, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=5, day=2, hour=23, minute=59, second=59),
             'weight': 4,
             'points': 4,
         },
         'final': {
             'title': 'Final exam',
-            'due_time': datetime(year=2024, month=5, day=8, hour=23, minute=59, second=59),
+            'due_time': datetime(year=2025, month=5, day=8, hour=23, minute=59, second=59),
             'weight': 20,
-            'points': 85,
+            'points': 100,
         },
     }
 }
